@@ -1461,6 +1461,20 @@ table.cctb,table.svtb,table.svheat{background:#fff}
   .card h2{font-size:18px}
   .libcol .pagetop .pe,.libcol .pagetop .pe[style]{font-size:24px}
 }
+/* 교육자료 휴대폰 : 3분할 대신 버튼 3개 → 고른 자료실 하나만 전체 폭 */
+.lib3tabs{display:none}
+@media(max-width:720px){
+  .lib3tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 14px;
+    position:sticky;top:62px;z-index:5;background:#fff;padding:8px 0}   /* 62px = 휴대폰 상단바 높이 (.tb-in) */
+  .lib3tabs button{all:unset;box-sizing:border-box;cursor:pointer;text-align:center;padding:13px 6px;
+    border-radius:999px;border:1px solid var(--line);background:#fff;font-size:14.5px;font-weight:700;
+    letter-spacing:-.03em;color:var(--ink2);white-space:nowrap}
+  .lib3tabs button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .lib3{display:block;height:auto !important;min-height:0}
+  .lib3 > .libcol{display:none;overflow:visible;padding:12px}
+  .lib3 > .libcol.on{display:block}
+  .lib3 > .libcol .pagetop{display:none}          /* 위 버튼에 이름이 있으니 칸 제목은 숨김 */
+}
 
 /* ── 안전작업허가 ── */
 .wppick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -2339,6 +2353,12 @@ img,video,canvas,iframe{max-width:100%}
   <div class="pagetop">
     <span class="pt">안전보건 교육자료</span>
     <span class="pe">Library</span>
+  </div>
+  <!-- 휴대폰 : 세 버튼만 보이고, 누른 자료실 하나만 아래에 넓게 (PC 는 그대로 3분할) -->
+  <div class="lib3tabs" role="tablist">
+    <button type="button" data-libtab="p-materials" class="on">교육자료</button>
+    <button type="button" data-libtab="p-news">소식지</button>
+    <button type="button" data-libtab="p-msds">MSDS 자료</button>
   </div>
   <!-- 세 자료실을 한 화면에 나란히 (각 칸은 JS로 채움) -->
   <div class="lib3">
@@ -4520,6 +4540,19 @@ function fitLib(){
   box.style.setProperty('--libh', Math.max(360, innerHeight - top - 16) + 'px');
 }
 addEventListener('resize', fitLib);
+/* 교육자료 휴대폰 버튼 (교육자료 · 소식지 · MSDS) — 고른 칸만 보이게. PC 에서는 버튼이 숨겨져 3칸이 그대로 */
+function libTab(id){
+  document.querySelectorAll('#p-library [data-libtab]').forEach(b => b.classList.toggle('on', b.dataset.libtab === id));
+  document.querySelectorAll('#p-library .lib3 > .libcol').forEach(c => c.classList.toggle('on', c.id === id));
+  try{ sessionStorage.setItem('pf_libtab', id); }catch(e){}
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('#p-library [data-libtab]'); if(!b) return;
+  libTab(b.dataset.libtab);
+  const t = document.querySelector('#p-library .lib3tabs');
+  if(t && t.getBoundingClientRect().top < 0) t.scrollIntoView({ block:'start' });
+});
+(function(){ let id = 'p-materials'; try{ id = sessionStorage.getItem('pf_libtab') || id; }catch(e){} libTab(id); })();
 
 /* ===================== 화면 이동 ===================== */
 /* 홈에서 숨겨 둔 메뉴입니다. 화면 · 코드 · 저장된 자료는 모두 그대로 남아 있으므로
