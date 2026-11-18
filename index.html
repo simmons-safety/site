@@ -7,14 +7,14 @@
 
 <!-- 카카오톡 · 문자 등 링크 미리보기 (섬네일 = og_thumb.jpg, 같은 폴더에 함께 올려야 함) -->
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://simmons-safety.github.io/field/">
+<meta property="og:url" content="https://simmons-safety.github.io/site/">
 <meta property="og:title" content="𝐒𝐈𝐌𝐌𝐎𝐍𝐒 − 안전보건 플랫폼">
-<meta property="og:image" content="https://simmons-safety.github.io/field/og_thumb.jpg">
+<meta property="og:image" content="https://simmons-safety.github.io/site/og_thumb.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="𝐒𝐈𝐌𝐌𝐎𝐍𝐒 − 안전보건 플랫폼">
-<meta name="twitter:image" content="https://simmons-safety.github.io/field/og_thumb.jpg">
+<meta name="twitter:image" content="https://simmons-safety.github.io/site/og_thumb.jpg">
 
 <!-- 휴대폰 홈 화면 앱 설치 -->
 <link rel="manifest" href="./manifest.webmanifest">
@@ -1385,6 +1385,15 @@ table.svtb th.it .lk,table.svtb th.it details.dsc summary{border-radius:var(--pi
 .brief,.acc{border:none;border-radius:var(--r-l);overflow:hidden;background:#fff}
 .brief .script{border:none;border-radius:var(--r-m)}
 .brief ul.bl li .k{border-radius:var(--pill);padding:0 8px}
+/* 꼬리표(결빙 · 빙판 등)가 줄 높이만큼 늘어나 큰 타원이 되던 것 → 글자 크기만큼만 */
+.brief ul.bl li .k{align-self:flex-start;height:auto;line-height:1.9;margin-top:2px}
+.brief ul.bl li .v{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere}
+.brief .bh .bw{white-space:normal;flex-basis:100%}          /* 날씨 줄이 길면 잘리지 않고 다음 줄로 */
+.brief .bsec > .sh{flex-wrap:wrap;row-gap:4px}
+@media(max-width:560px){
+  .brief ul.bl li:not(.num){flex-direction:column;gap:5px}  /* 휴대폰 : 꼬리표를 위에, 설명을 아래 전체 폭으로 (번호 1·2·3 은 옆에 그대로) */
+  .brief .bsec > .sh .m{flex-basis:100%;order:3}
+}
 .acc .apost img{border-radius:var(--r-s)}
 
 /* ── 협의체 표 · 달력 ── */
@@ -3673,7 +3682,49 @@ function checkPw(message){
   if(pw !== DELETE_PW){ toast('비밀번호가 올바르지 않습니다','err'); return false; }
   return true;
 }
-function checkDeletePw(){ return checkPw('삭제 비밀번호를 입력하세요'); }
+/* 삭제 비밀번호 : 삭제할 때마다 4자리를 묻고, 한 번 맞게 넣은 번호는 이 브라우저에 기억해
+   다음 삭제 때 **** 로 미리 채워 둡니다 (확인만 누르면 됨). 입력한 숫자는 * 로 가려집니다.
+   쓰는 곳 : if(!(await checkDeletePw())) return;   (pin 을 주면 그 번호로 확인 · 기억은 같은 칸) */
+const DEL_PW_KEY = 'del_pw_saved';
+function checkDeletePw(pin){
+  const PIN = pin || DELETE_PW;
+  let saved = ''; try{ saved = localStorage.getItem(DEL_PW_KEY) || ''; }catch(e){}
+  return new Promise(resolve => {
+    const bg = document.createElement('div');
+    bg.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+    const btn = 'border:0;border-radius:10px;padding:10px 18px;font-size:15px;font-weight:700;cursor:pointer;';
+    bg.innerHTML = `<div role="dialog" aria-label="삭제 비밀번호" style="background:#fff;color:#111;border-radius:14px;padding:20px;width:100%;max-width:320px;box-shadow:0 12px 32px rgba(0,0,0,.25)">
+      <h3 style="margin:0 0 6px;font-size:17px">삭제 비밀번호</h3>
+      <p style="margin:0 0 12px;font-size:14px;color:#555;line-height:1.5">비밀번호 4자리를 입력하세요.${saved ? '<br><small>지난번 입력한 번호가 채워져 있습니다.</small>' : ''}</p>
+      <input type="text" inputmode="numeric" maxlength="4" autocomplete="off" style="width:100%;box-sizing:border-box;font-size:24px;letter-spacing:10px;text-align:center;padding:10px;border:1px solid #cbd5e1;border-radius:10px">
+      <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
+        <button type="button" data-pw="cancel" style="${btn}background:#eef1f5;color:#333">취소</button>
+        <button type="button" data-pw="ok" style="${btn}background:#d93025;color:#fff">삭제</button>
+      </div></div>`;
+    document.body.appendChild(bg);
+    const inp = bg.querySelector('input');
+    let real = saved.slice(0, 4);
+    const paint = () => { inp.value = '*'.repeat(real.length); };
+    paint();
+    inp.addEventListener('input', () => {
+      const v = inp.value, keep = (v.match(/^\*+/) || [''])[0].length;
+      real = (real.slice(0, keep) + v.slice(keep).replace(/\D/g, '')).slice(0, 4);
+      paint();
+    });
+    setTimeout(() => { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }, 0);
+    const done = v => { bg.remove(); resolve(v); };
+    const check = () => {
+      if(real === PIN){ try{ localStorage.setItem(DEL_PW_KEY, real); }catch(e){} return done(true); }
+      toast('비밀번호가 올바르지 않습니다','err'); real = ''; paint(); inp.focus();
+    };
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter') check(); else if(e.key === 'Escape') done(false); });
+    bg.addEventListener('click', e => {
+      if(e.target === bg) return done(false);
+      const b = e.target.closest('[data-pw]');
+      if(b) b.dataset.pw === 'ok' ? check() : done(false);
+    });
+  });
+}
 const UNLOCKED = {};              // 비밀번호로 잠금 해제한 화면 (새로고침 시 다시 잠김)
 let SCHEMA_WARNED = false;
 function schemaWarn(){
@@ -4223,7 +4274,7 @@ async function pfChange(){
 
 /* 회원가입 → 승인 대기 + 관리자 메일 */
 /* 승인 메일 링크는 어디서 가입했든 항상 이 주소의 회원 관리 화면으로 엽니다 */
-const PF_ADMIN_PAGE = 'https://simmons-safety.github.io/field/';
+const PF_ADMIN_PAGE = 'https://simmons-safety.github.io/site/';
 const pfAdminUrl = emp => PF_ADMIN_PAGE + '?admin=users' + (emp ? '&emp=' + encodeURIComponent(emp) : '');
 let PF_SENT_EMP = '';
 async function pfSignup(){
@@ -4722,7 +4773,7 @@ function renderRecords(){
 async function delRecord(id){
   const r = RECORDS.find(x => x.id === id);
   if(!r || !confirm(`${r.meeting_date} ${r.department} 기록을 삭제할까요? 되돌릴 수 없습니다.`)) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   const paths = (r.photos||[]).map(p => p.path).filter(Boolean);
   if(paths.length) await db.storage.from('tbm-photos').remove(paths);
   const { error } = await db.from('tbm_records').delete().eq('id', id);
@@ -5067,7 +5118,7 @@ function renderFireRecords(){
 async function delFire(id){
   const r = FR_RECORDS.find(x => x.id === id);
   if(!r || !confirm(`${r.inspection_date} ${r.department} 점검 기록을 삭제할까요? 되돌릴 수 없습니다.`)) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   const { error } = await db.from('fire_inspections').delete().eq('id', id);
   if(error) return toast('삭제 실패: '+error.message,'err');
   toast('삭제했습니다','ok'); loadFireRecords();
@@ -6127,7 +6178,7 @@ async function wpFinalDel(idx){
   const p = WP_ALL.find(x => x.id === WP_CUR);
   const f = p && (p.files || [])[idx];
   if(!f || !f.final) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   const files = (p.files || []).filter((x, i) => i !== idx);
   await wpSnapshot({ ...p, files });
   const { error } = await db.from('work_permits').update({ files, updated_at:new Date().toISOString() }).eq('id', p.id);
@@ -6167,9 +6218,7 @@ async function wpDel(id){
   const p = WP_ALL.find(x => x.id === id);
   if(!p || !confirm(`${p.permit_no} ${p.work_name} 허가서를 삭제할까요? 되돌릴 수 없습니다.`)) return;
   /* 허가서 삭제 비밀번호 (기록대장 · 허가서 보기 공통) */
-  const pw = prompt('삭제 비밀번호를 입력하세요');
-  if(pw === null) return;
-  if(pw !== WP_DEL_PW) return toast('비밀번호가 올바르지 않습니다','err');
+  if(!(await checkDeletePw(WP_DEL_PW))) return;
   const paths = [...Object.values(p.signs || {}), ...(p.files || [])].map(x => x && x.path).filter(Boolean);
   if(paths.length) await db.storage.from(WP_BUCKET).remove(paths);
   const { error } = await db.from('work_permits').delete().eq('id', id);
@@ -6927,7 +6976,7 @@ class MatView{
     }
     const id = e.target.dataset.delmat;
     if(!id || !confirm('이 자료를 삭제할까요?')) return;
-    if(!checkDeletePw()) return;
+    if(!(await checkDeletePw())) return;
     if(e.target.dataset.path) await db.storage.from('tbm-materials').remove([e.target.dataset.path]);
     const { error } = await db.from('training_materials').delete().eq('id', id);
     if(error) return toast('삭제 실패: '+error.message,'err');
@@ -7203,7 +7252,7 @@ async function onAccClick(e){
   if(rm != null){ URL.revokeObjectURL(P_FILES[rm].preview); P_FILES.splice(rm, 1); return paintAccidents(); }
   const del = e.target.dataset.pdel;
   if(del){
-    if(!confirm('이 포스터를 삭제할까요?') || !checkDeletePw()) return;
+    if(!confirm('이 포스터를 삭제할까요?') || !(await checkDeletePw())) return;
     if(e.target.dataset.path) await db.storage.from('tbm-materials').remove([e.target.dataset.path]);
     const { error } = await db.from('training_materials').delete().eq('id', del);
     if(error) return toast('삭제 실패: ' + error.message, 'err');
@@ -7211,7 +7260,7 @@ async function onAccClick(e){
     return loadMaterials();
   }
   const act = e.target.dataset.pact;
-  if(act === 'open'){ if(!checkDeletePw()) return; P_OPEN = true; return paintAccidents(); }
+  if(act === 'open'){ if(!(await checkDeletePw())) return; P_OPEN = true; return paintAccidents(); }
   if(act === 'cancel'){ posterReset(); return paintAccidents(); }
   if(act === 'save') return savePosters();
 }
@@ -7616,7 +7665,7 @@ function onWeatherUpdated(){
 }
 function paintBrief(m, sum){
   const box = $('#dailyBrief'), d = new Date(), wp = wxPoints();
-  const li = (k, v) => `<li><span class="k">${esc(k)}</span><span class="v">${v}</span></li>`;
+  const li = (k, v) => `<li${/^\d+$/.test(k) ? ' class="num"' : ''}><span class="k">${esc(k)}</span><span class="v">${v}</span></li>`;
   const skel = '<div class="skel"></div><div class="skel w85"></div><div class="skel w70"></div>';
   const chip = WX
     ? `${WX.sky} ${WX.temp}° · 체감 ${WX.feels}° · 습도 ${WX.hum}% · 바람 ${WX.wind}m/s · 강수 ${WX.pop}%`
@@ -8923,7 +8972,7 @@ async function ohClick(e){
   }
   const dl = e.target.closest('[data-ohdel]');
   if(dl){
-    if(!checkDeletePw()) return;
+    if(!(await checkDeletePw())) return;
     const p = OH.posts.find(x => String(x.id) === dl.dataset.ohdel);
     const { error } = await db.from('health_posts').delete().eq('id', dl.dataset.ohdel);
     if(error) return toast('삭제 실패: ' + error.message, 'err');
@@ -9047,7 +9096,7 @@ async function saveGuide(){
 }
 async function delGuide(id, path){
   if(!confirm('이 안내도를 삭제할까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   if(path) await db.storage.from('tbm-materials').remove([path]);
   const { error } = await db.from('training_materials').delete().eq('id', id);
   if(error) return toast('삭제 실패: '+error.message,'err');
@@ -9162,7 +9211,7 @@ async function savePolicy(){
 }
 async function delPolicy(id, path){
   if(!confirm('이 방침 문서를 삭제할까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   if(path) await db.storage.from('tbm-materials').remove([path]);
   const { error } = await db.from('training_materials').delete().eq('id', id);
   if(error) return toast('삭제 실패: '+error.message,'err');
@@ -9282,7 +9331,7 @@ async function saveAccRep(){
 }
 async function delAccRep(id, path){
   if(!confirm('이 사고보고체계 자료를 삭제할까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   if(path) await db.storage.from('tbm-materials').remove([path]);
   const { error } = await db.from('training_materials').delete().eq('id', id);
   if(error) return toast('삭제 실패: '+error.message,'err');
@@ -9551,7 +9600,7 @@ async function saveCcUpload(){
 }
 async function delCcSub(id, path){
   if(!confirm('이 제출 자료를 삭제할까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   if(path) await db.storage.from(CC_BUCKET).remove([path]);
   const { error } = await db.from('council_submissions').delete().eq('id', id);
   if(error) return toast('삭제 실패: '+error.message,'err');
@@ -9732,7 +9781,7 @@ async function saveCcArchive(){
 }
 async function delCcArchive(id, path){
   if(!confirm('이 자료를 삭제할까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   if(path) await db.storage.from(CC_BUCKET).remove([path]);
   const { error } = await db.from('council_archives').delete().eq('id', id);
   if(error) return toast('삭제 실패: '+error.message,'err');
@@ -9861,7 +9910,7 @@ async function saveCcEvent(){
 }
 async function delCcEvent(id){
   if(!confirm('이 일정을 삭제할까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   const { error } = await db.from('council_schedules').delete().eq('id', id);
   if(error) return toast('삭제 실패: '+error.message,'err');
   toast('삭제했습니다','ok');
@@ -10639,7 +10688,7 @@ async function saveSvCell(){
 async function delSvCell(){
   if(!SV_CELL || !SV_CELL.row) return;
   if(!confirm('이 칸의 기록을 지울까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   const paths = (SV_CELL.row.files||[]).map(f => f.path).filter(Boolean);
   if(paths.length) await db.storage.from(SV_BUCKET).remove(paths);
   const { error } = await db.from('supervisor_activities').delete().eq('id', SV_CELL.row.id);
@@ -11467,7 +11516,7 @@ async function ppeSignSave(){
 }
 async function delPpe(id){
   if(!confirm('이 신청 건을 삭제할까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   const { error } = await db.from('ppe_requests').delete().eq('id', id);
   if(error) return toast('삭제 실패: '+error.message,'err');
   toast('삭제했습니다','ok'); await loadPpe();
@@ -11589,7 +11638,7 @@ async function saveAns(){
 }
 async function delVoice(id){
   if(!confirm('이 의견을 삭제할까요?')) return;
-  if(!checkDeletePw()) return;
+  if(!(await checkDeletePw())) return;
   const v = VOICES.find(x => x.id === id);
   const paths = ((v && v.photos) || []).map(p => p.path).filter(Boolean);
   if(paths.length) await db.storage.from('tbm-photos').remove(paths);
@@ -11955,7 +12004,7 @@ const ctStatusCls = s => s === '발송완료' ? 's3' : s === '평가완료' ? 's
 const ctTableMissing = err => err && /contractor_evals|42P01|PGRST205/.test(String(err.code) + ' ' + err.message);
 const ctMissingMsg = '적격수급인 평가 표가 없습니다. schema_contractor.sql 을 먼저 실행해 주세요.';
 /* 메일 링크에 쓰는 플랫폼 주소 (어디서 제출하든 항상 실제 배포 주소로 연결) */
-const CT_PLATFORM_URL = 'https://simmons-safety.github.io/field/';
+const CT_PLATFORM_URL = 'https://simmons-safety.github.io/site/';
 const ctPlatformUrl = () => CT_PLATFORM_URL;
 /* 메일 링크 (?go=ctr&ct=ID) : 제출 현황 · 평가 탭(비밀번호)으로 가서 그 건의 평가 창을 바로 엽니다 */
 const ctLink = r => ctPlatformUrl() ? `${ctPlatformUrl()}?go=ctr&ct=${encodeURIComponent(r.id)}` : '';
@@ -12392,7 +12441,7 @@ function ctOpen(id){
     if(act === 'save' || act === 'final'){ a.disabled = true; try{ await save(act === 'final'); } finally { a.disabled = false; } return; }
     if(act === 'mail') return sendMail();
     if(act === 'del'){
-      if(!checkDeletePw()) return;
+      if(!(await checkDeletePw())) return;
       if(!confirm(`${r.company} - ${r.project} 제출 건과 첨부 파일을 모두 삭제할까요?`)) return;
       const paths = (r.files || []).map(f => f.path).filter(Boolean);
       if(paths.length) await db.storage.from(WP_BUCKET).remove(paths);
@@ -13136,6 +13185,37 @@ document.addEventListener('DOMContentLoaded', () => {
   if('serviceWorker' in navigator && location.protocol === 'https:'){
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
+
+  /* 새 버전 자동 반영 — 휴대폰(특히 홈 화면에 설치한 앱 · 카카오톡 안 브라우저)은 예전 화면을 오래 들고 있어
+     새로 올려도 새로고침으로 안 바뀌는 일이 있습니다. 열 때 · 다시 볼 때 서버의 index.html 수정 시각을
+     캐시 없이 확인해서, 바뀌었으면 한 번만 새 주소(?v=…)로 다시 불러옵니다. 따로 손댈 것 없음. */
+  (function autoUpdate(){
+    if(location.protocol !== 'https:' || !window.fetch) return;
+    const KEY = 'pf_page_ver';
+    // 다시 불러온 뒤 주소 끝의 ?v=… 는 지움 (다른 ?go= 같은 값은 그대로)
+    const sp = new URLSearchParams(location.search);
+    if(sp.has('v')){ sp.delete('v'); const q = sp.toString(); history.replaceState(history.state, '', location.pathname + (q ? '?' + q : '') + location.hash); }
+    let busy = false;
+    async function check(){
+      if(busy) return; busy = true;
+      try{
+        const r = await fetch(location.pathname + '?vcheck=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+        const ver = r.ok ? (r.headers.get('last-modified') || r.headers.get('etag') || '') : '';
+        if(!ver) return;
+        let old = ''; try{ old = localStorage.getItem(KEY) || ''; }catch(e){}
+        try{ localStorage.setItem(KEY, ver); }catch(e){}
+        if(old && old !== ver){
+          // 입력 중인 칸이 있으면 날아가지 않도록 그때는 다시 불러오지 않음 (다음에 열 때 반영)
+          const a = document.activeElement;
+          if(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value){ try{ localStorage.setItem(KEY, old); }catch(e){} return; }
+          const p = new URLSearchParams(location.search); p.set('v', Date.now().toString(36));
+          location.replace(location.pathname + '?' + p.toString() + location.hash);
+        }
+      }catch(e){} finally{ busy = false; }
+    }
+    check();
+    document.addEventListener('visibilitychange', () => { if(!document.hidden) check(); });
+  })();
   window.addEventListener('beforeinstallprompt', ev => {
     ev.preventDefault();
     const b = $('#btnInstall');
