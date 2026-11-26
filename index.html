@@ -1479,6 +1479,12 @@ table.cctb,table.svtb,table.svheat{background:#fff}
 /* ── 안전작업허가 ── */
 .wppick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 /* 일반 허가서 : 임직원 / 협력사를 고르기 전에는 아래 작성 칸을 숨깁니다 */
+/* 로그인 없는 외부 링크 (?wpx · ?wpa) : 메뉴 · 다른 화면 · 삭제 버튼 숨김 */
+html.wp-guest .topbar,html.wp-guest #hero,html.wp-guest #wpPickTop,html.wp-guest #wpPick,
+html.wp-guest #btnWpRepick,html.wp-guest #p-permit .subnav,html.wp-guest [data-wpdel],
+html.wp-guest [data-wpfdelfinal],html.wp-guest-approve #wpMain{display:none !important}
+html.wp-guest #p-permit{display:block !important}
+#wpGuestMsg:empty{display:none}
 #p-permit.wp-nokind #wpTypesTtl,#p-permit.wp-nokind #wpTypes,
 #p-permit.wp-nokind [data-sp="write"] > :not(:first-child){display:none !important}
 #p-permit.wp-nokind #wpKindBox::after{content:'임직원 / 협력사 중 하나를 먼저 선택해 주세요';display:block;margin-top:12px;font-size:12.5px;color:var(--human, #C0392B);font-weight:600}
@@ -1812,6 +1818,10 @@ button.b.wpbb.done:hover{opacity:.85}
 .wk-bar{display:block;height:6px;background:var(--panel3);border-radius:3px;overflow:hidden;min-width:70px}
 .wk-bar i{display:block;height:100%;background:#000;border-radius:3px}
 .wk-bar.done i{background:#16A085}
+.oh-wks{display:inline-flex;gap:3px}
+.oh-wks span{min-width:22px;height:22px;border-radius:6px;background:var(--panel3);color:var(--ink3);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-family:var(--fd)}
+.oh-wks span.some{background:#000;color:#fff;opacity:.55}
+.oh-wks span.ok{background:#16A085;color:#fff}
 .wk-badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--pill);background:#16A085;color:#fff;white-space:nowrap}
 .wk-badge.off{background:var(--panel3);color:var(--ink2)}
 .wk-badge.ink{background:#000}
@@ -1893,6 +1903,7 @@ button.b.wpbb.done:hover{opacity:.85}
 <script>
 (function(){
   if(/[?&]wx(=|&|$)/.test(location.search)) return;
+  if(/[?&](wpx|wpa)(=|&|$)/.test(location.search)) return;   /* 안전작업허가 외부 링크 (밀폐공간) */
   var ok = false;
   try{ var s = JSON.parse(sessionStorage.getItem('pf_sess') || 'null'); ok = !!(s && s.emp); }catch(e){}
   if(!ok) document.documentElement.classList.add('pf-locked');
@@ -1913,7 +1924,7 @@ html.pf-locked #pfGate,.pfg.on{display:block}
 .pfg-sub{margin:0 0 20px;font-size:13.5px;color:var(--ink2);line-height:1.65}
 .pfg-f{margin-bottom:12px}
 .pfg-f label{margin-bottom:7px}
-.pfg input[type=password]{letter-spacing:.3em}
+.pfg input[type=password]{letter-spacing:.15em}
 .pfg input[type=password]::placeholder{letter-spacing:.05em}
 #pfPin:placeholder-shown,#pfPin::placeholder{letter-spacing:normal}
 .pfg-chk{display:flex!important;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px!important;font-weight:600;color:var(--ink)!important;margin:4px 0 14px!important;cursor:pointer}
@@ -2933,6 +2944,7 @@ img,video,canvas,iframe{max-width:100%}
     <span class="pe">Work Permit</span>
   </div>
 
+  <div id="wpGuestMsg"></div>
   <div class="wppick" id="wpPick">
     <button data-wpmode="일반"><b>일반</b><small class="wpsub">(임직원 및 협력사)</small></button>
     <button data-wpmode="긴급"><b>긴급</b><small class="wpsub">(작업부서 담당자 ↔ 안전관리자)</small></button>
@@ -3124,7 +3136,7 @@ img,video,canvas,iframe{max-width:100%}
       </div>
       <div class="drop" id="ctDrop">
         <div class="big">증빙서류 선택 또는 끌어다 놓기</div>
-        <div class="hint">여러 파일을 한꺼번에 선택할 수 있습니다</div>
+        <div class="hint">여러 파일을 한꺼번에 선택할 수 있습니다 · 첨부 없이도 제출됩니다</div>
         <input type="file" id="ctFileIn" multiple hidden>
       </div>
       <div class="foot" style="margin-top:8px" id="ctFileBar" hidden>
@@ -3491,7 +3503,13 @@ img,video,canvas,iframe{max-width:100%}
         <div class="wpnames" id="wpSignNames" hidden></div>
         <input type="text" id="wpSignName"></div>
       <div id="wpSignExtra"></div>
-      <p class="hint" style="margin:0 0 4px">직접 서명하지 않고, 완료를 누르면 이름과 날짜로 <b>승인 도장</b>이 자동으로 찍힙니다.</p>
+      <p class="hint" id="wpSignStampHint" style="margin:0 0 4px">직접 서명하지 않고, 완료를 누르면 이름과 날짜로 <b>승인 도장</b>이 자동으로 찍힙니다.</p>
+      <!-- 밀폐공간 신청 : 손서명 -->
+      <div id="wpSignPadWrap" hidden style="margin-bottom:8px">
+        <label style="display:flex;align-items:center">서명 <em>*</em>
+          <button type="button" class="btn sm ghost" id="btnWpPadClear" style="margin-left:auto">다시 쓰기</button></label>
+        <div class="ps-pad"><canvas id="wpSignCanvas"></canvas><span class="ps-ph" id="wpSignPh">여기에 손가락 · 마우스로 서명해 주세요</span></div>
+      </div>
       <div id="wpSignAfter"></div>
       <div class="foot">
         <button class="btn" id="btnWpSignOk">승인</button>
@@ -3518,10 +3536,10 @@ img,video,canvas,iframe{max-width:100%}
 
     <!-- 로그인 -->
     <form class="pfg-view" data-pfv="login" id="pfLoginForm" autocomplete="on">
-      <div class="pfg-f"><label for="pfEmp">아이디 (사번)</label>
-        <input id="pfEmp" name="username" type="text" inputmode="numeric" autocomplete="username" placeholder="사번 입력"></div>
-      <div class="pfg-f"><label for="pfPin">비밀번호 (숫자 4자리)</label>
-        <input id="pfPin" name="password" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="최초 로그인 비밀번호 0000"></div>
+      <div class="pfg-f"><label for="pfEmp">아이디</label>
+        <input id="pfEmp" name="username" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="username" placeholder="아이디 입력"></div>
+      <div class="pfg-f"><label for="pfPin">비밀번호</label>
+        <input id="pfPin" name="password" type="password" maxlength="30" autocomplete="current-password" placeholder="비밀번호 입력"></div>
       <label class="pfg-chk"><input type="checkbox" id="pfSave" checked> 로그인 정보 저장</label>
       <p class="pfg-msg" id="pfMsg" role="alert"></p>
       <button class="btn pfg-main" id="pfBtnLogin" type="submit">로그인</button>
@@ -3530,8 +3548,7 @@ img,video,canvas,iframe{max-width:100%}
         <button class="btn ghost" type="button" id="pfGoChange">비밀번호 변경</button>
       </div>
       <ul class="pfg-info">
-        <li>신규 입사자 · 협력사 등은 회원가입 후 관리자 승인을 받으면 이용할 수 있습니다.</li>
-        <li>문의 : 안전보건기획팀 한기선 차장 (hk7149@simmons.co.kr)</li>
+        <li>처음 이용하시는 분은 [회원가입]으로 아이디 · 비밀번호를 만든 뒤 바로 이용할 수 있습니다.</li>
       </ul>
     </form>
 
@@ -3539,15 +3556,15 @@ img,video,canvas,iframe{max-width:100%}
     <form class="pfg-view" data-pfv="change" id="pfChgForm" hidden>
       <p class="pfg-h">비밀번호 변경</p>
       <p class="pfg-sub" id="pfChgLead"></p>
-      <div class="pfg-f" id="pfChgEmpF"><label for="pfChgEmp">아이디 (사번)</label>
-        <input id="pfChgEmp" type="text" inputmode="numeric" autocomplete="username" placeholder="사번 입력"></div>
+      <div class="pfg-f" id="pfChgEmpF"><label for="pfChgEmp">아이디</label>
+        <input id="pfChgEmp" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="username" placeholder="아이디 입력"></div>
       <div class="pfg-f" id="pfChgCurF"><label for="pfChgCur">현재 비밀번호</label>
-        <input id="pfChgCur" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="숫자 4자리"></div>
+        <input id="pfChgCur" type="password" maxlength="30" autocomplete="current-password" placeholder="현재 비밀번호"></div>
       <div id="pfChgNewBox">
-      <div class="pfg-f"><label for="pfChgNew">새 비밀번호 (숫자 4자리)</label>
-        <input id="pfChgNew" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="숫자 4자리"></div>
+      <div class="pfg-f"><label for="pfChgNew">새 비밀번호 (영문 · 숫자 4자 이상)</label>
+        <input id="pfChgNew" type="password" maxlength="30" autocomplete="new-password" placeholder="4~30자"></div>
       <div class="pfg-f"><label for="pfChgNew2">새 비밀번호 확인</label>
-        <input id="pfChgNew2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="한 번 더 입력"></div>
+        <input id="pfChgNew2" type="password" maxlength="30" autocomplete="new-password" placeholder="한 번 더 입력"></div>
       </div>
       <label class="pfg-chk" id="pfLaterF"><input type="checkbox" id="pfLater"> 3개월 뒤에 변경 <span>지금은 그대로 로그인하고, 3개월 뒤에 다시 안내</span></label>
       <p class="pfg-msg" id="pfChgMsg" role="alert"></p>
@@ -3558,10 +3575,10 @@ img,video,canvas,iframe{max-width:100%}
     <!-- 회원가입 -->
     <form class="pfg-view" data-pfv="signup" id="pfSuForm" hidden>
       <p class="pfg-h">회원가입</p>
-      <p class="pfg-sub">아이디는 <b>사번</b>, 비밀번호는 <b>숫자 4자리</b>로 자유롭게 정합니다.<br>
-        <b>관리자 승인 후 이용할 수 있습니다.</b> (승인 : 안전보건기획팀 한기선 차장)</p>
-      <div class="pfg-f"><label for="pfSuEmp">아이디 (사번) <em>*</em></label>
-        <input id="pfSuEmp" type="text" inputmode="numeric" autocomplete="username" placeholder="사번 입력"></div>
+      <p class="pfg-sub">아이디와 비밀번호를 자유롭게 정하세요. 가입하면 <b>바로 이용</b>할 수 있습니다.<br>
+        아이디 : 영문 · 숫자 4~20자 &nbsp;·&nbsp; 비밀번호 : 영문 · 숫자 4~30자</p>
+      <div class="pfg-f"><label for="pfSuEmp">아이디 <em>*</em></label>
+        <input id="pfSuEmp" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20" autocomplete="username" placeholder="예) hong123"></div>
       <div class="pfg-f"><label for="pfSuName">이름 <em>*</em></label>
         <input id="pfSuName" type="text" autocomplete="name" placeholder="홍길동"></div>
       <div class="pfg-2">
@@ -3571,28 +3588,19 @@ img,video,canvas,iframe{max-width:100%}
           <input id="pfSuTeam" type="text" placeholder="예) 생산팀"></div>
       </div>
       <div class="pfg-2">
-        <div class="pfg-f"><label for="pfSuPin">비밀번호 (숫자 4자리) <em>*</em></label>
-          <input id="pfSuPin" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="숫자 4자리"></div>
+        <div class="pfg-f"><label for="pfSuPin">비밀번호 <em>*</em></label>
+          <input id="pfSuPin" type="password" maxlength="30" autocomplete="new-password" placeholder="4~30자"></div>
         <div class="pfg-f"><label for="pfSuPin2">비밀번호 확인 <em>*</em></label>
-          <input id="pfSuPin2" type="password" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="한 번 더"></div>
+          <input id="pfSuPin2" type="password" maxlength="30" autocomplete="new-password" placeholder="한 번 더"></div>
       </div>
       <p class="pfg-msg" id="pfSuMsg" role="alert"></p>
-      <button class="btn pfg-main" type="submit">가입 신청</button>
+      <button class="btn pfg-main" type="submit">가입하고 시작하기</button>
       <button class="btn ghost pfg-main" type="button" id="pfSuBack">로그인으로 돌아가기</button>
       <ul class="pfg-info">
-        <li>가입 신청하면 관리자에게 승인 요청 메일이 갑니다. <b>승인 후</b> 사번과 정한 비밀번호로 로그인하세요.</li>
+        <li>가입하면 바로 로그인됩니다. 다음부터는 정한 아이디 · 비밀번호로 로그인하세요.</li>
         <li>문의 : <b>안전보건기획팀 한기선 차장</b></li>
       </ul>
     </form>
-
-    <!-- 가입 신청 완료 -->
-    <div class="pfg-view" data-pfv="sent" hidden>
-      <p class="pfg-h">가입 신청이 접수되었습니다</p>
-      <p class="pfg-sub"><b id="pfSentWho"></b> 님의 신청을 관리자에게 보냈습니다.<br>
-        <b>관리자 승인 후</b> 사번과 정한 비밀번호로 로그인할 수 있습니다.<br>
-        승인이 늦어지면 안전보건기획팀 한기선 차장에게 문의해 주세요.</p>
-      <button class="btn pfg-main" type="button" id="pfSentBack">로그인 화면으로</button>
-    </div>
   </div>
 </div>
 
@@ -3610,7 +3618,7 @@ img,video,canvas,iframe{max-width:100%}
     <div id="pfaBody" hidden>
       <p class="pfg-sub">회원가입 신청을 승인하고, 퇴사자는 <b>삭제(퇴사)</b>로 로그인을 막습니다. 삭제한 계정은 '삭제(퇴사) · 반려' 탭에서 복구할 수 있습니다.</p>
       <div class="pfa-tabs" id="pfaTabs"></div>
-      <input type="search" id="pfaQ" placeholder="이름 · 사번 · 팀 검색">
+      <input type="search" id="pfaQ" placeholder="이름 · 아이디 · 팀 검색">
       <div class="pfa-list" id="pfaList"></div>
     </div>
   </div>
@@ -4133,12 +4141,14 @@ async function loadGpsWeather(lat, lon, acc, picked){
 }
 
 /* ===================== 로그인 · 회원가입 · 회원 관리 (schema_login.sql) =====================
-   아이디 = 사번 · 비밀번호 = 숫자 4자리 (인원현황 명단은 최초 0000). 확인은 Supabase 함수(pf_login 등)가 하고,
-   비밀번호는 서버에 암호화해 저장합니다. 3회 틀리면 서버가 최초 발급 비밀번호로 되돌립니다.
-   '로그인 정보 저장'을 켜 두면 이 기기에 사번 · 비밀번호를 기억해 다음부터 로그인 버튼만 누르면 됩니다.
+   2026-11-22 사번 로그인 폐지 → 일반 아이디 · 비밀번호. 회원가입하면 승인 없이 바로 로그인됩니다.
+   아이디 = 영문 · 숫자 · . _ - 4~20자 (소문자로 저장, 대소문자 구분 없음) · 비밀번호 = 띄어쓰기 없는 4~30자.
+   확인은 Supabase 함수(pf_login 등)가 하고, 비밀번호는 서버에 암호화해 저장합니다.
+   3회 틀리면 서버가 가입 때 정한 비밀번호로 되돌립니다.
+   '로그인 정보 저장'을 켜 두면 이 기기에 아이디 · 비밀번호를 기억해 다음부터 로그인 버튼만 누르면 됩니다.
    같은 창(탭)에서는 새로고침해도 다시 묻지 않습니다. 차량 QR 날씨(?wx)는 로그인 없이 열립니다.
-   회원가입 → PF_ADMIN_MAIL 로 승인 요청 메일 (링크 = ?admin=users&emp=사번 → 회원 관리 화면) */
-const PF_ADMIN_MAIL = 'hk7149@simmons.co.kr';          // 회원가입 승인 요청 메일 받는 주소
+   회원가입 → PF_ADMIN_MAIL 로 가입 알림 메일 (링크 = ?admin=users&emp=아이디 → 회원 관리 화면) */
+const PF_ADMIN_MAIL = 'hk7149@simmons.co.kr';          // 회원가입 알림 메일 받는 주소
 const PF_CONTACT    = '안전보건기획팀 한기선 차장';       // 로그인 문의처
 const PF_AUTH = { ok:false, user:null, waiters:[], inited:false };
 (function(){
@@ -4162,7 +4172,9 @@ function pfShow(v){
   $$('#pfGate .pfg-view').forEach(f => f.hidden = (f.dataset.pfv !== v));
   $('#pfGate').scrollTop = 0;
 }
-const pfPin4 = s => /^\d{4}$/.test(s);
+const pfPwOk = s => /^[\x21-\x7E]{4,30}$/.test(s);      // 영문 · 숫자 · 특수문자 4~30자 (띄어쓰기 · 한글 X)
+const pfIdOk = s => /^[a-z0-9._-]{4,20}$/.test(s);
+const PF_PW_RULE = '비밀번호는 영문 · 숫자 4~30자로 정해 주세요. (띄어쓰기 · 한글 제외)';
 function pfBusy(form, on){ form.querySelectorAll('button').forEach(b => b.disabled = on); }
 function pfRpcErr(error){
   const m = (error && (error.message || String(error))) || '';
@@ -4175,17 +4187,17 @@ async function pfRpc(fn, args){
   try{ return await db.rpc(fn, args); }catch(e){ return { error:e }; }
 }
 /* 3회 틀려 초기화됐을 때 문구 */
-const pfResetMsg = r => `비밀번호를 3회 잘못 입력해 최초 발급 비밀번호${r.source === 'signup' ? '(회원가입 때 정한 비밀번호)' : '(0000)'}로 초기화되었습니다.\n`
-  + '최초 비밀번호로 다시 로그인한 뒤 새 비밀번호로 변경해 주세요.';
+const pfResetMsg = r => '비밀번호를 3회 잘못 입력해 회원가입 때 정한 비밀번호로 초기화되었습니다.\n'
+  + '가입 때 정한 비밀번호로 다시 로그인한 뒤 새 비밀번호로 변경해 주세요.';
 const pfBadMsg = r => `비밀번호가 맞지 않습니다. (${r.fail}/3회)\n`
-  + `${r.left}회 더 틀리면 비밀번호가 최초 발급 비밀번호로 초기화됩니다.`;
+  + `${r.left}회 더 틀리면 비밀번호가 회원가입 때 정한 비밀번호로 초기화됩니다.`;
 
 async function pfLogin(){
   const f = $('#pfLoginForm');
-  const emp = $('#pfEmp').value.trim(), pin = $('#pfPin').value.trim();
+  const emp = $('#pfEmp').value.trim().toLowerCase(), pin = $('#pfPin').value;
   pfMsg('#pfMsg', '');
-  if(!emp) return pfMsg('#pfMsg', '아이디(사번)를 입력하세요.');
-  if(!pfPin4(pin)) return pfMsg('#pfMsg', '비밀번호 숫자 4자리를 입력하세요.');
+  if(!emp) return pfMsg('#pfMsg', '아이디를 입력하세요.');
+  if(!pin) return pfMsg('#pfMsg', '비밀번호를 입력하세요.');
   pfBusy(f, true);
   const res = await pfRpc('pf_login', { p_emp: emp, p_pin: pin });
   pfBusy(f, false);
@@ -4202,7 +4214,7 @@ async function pfLogin(){
   }
   STORE.set('auth_pin', '');                         // 틀린 비밀번호는 기억하지 않습니다
   const M = {
-    nouser:   '등록되지 않은 사번입니다.\n사번을 다시 확인하시거나, 명단에 없는 분은 아래 [회원가입]을 해 주세요.',
+    nouser:   '등록되지 않은 아이디입니다.\n아이디를 다시 확인하시거나, 처음 이용하시면 아래 [회원가입]을 해 주세요.',
     pending:  '회원가입 승인 대기 중입니다.\n관리자 승인 후 이용할 수 있습니다.',
     rejected: `회원가입이 승인되지 않았습니다.\n${PF_CONTACT}에게 문의해 주세요.`,
     retired:  `이용이 중지된 계정입니다.\n${PF_CONTACT}에게 문의해 주세요.`
@@ -4219,8 +4231,8 @@ function pfChangeOpen(o){
   const forced = !!PF_CHG.forced, inApp = !!PF_CHG.inApp;
   $('#pfChgLead').textContent = forced
     ? ''
-    : inApp ? '현재 비밀번호를 넣고 새 비밀번호(숫자 4자리)를 정하세요.'
-            : '사번과 현재 비밀번호를 넣고 새 비밀번호(숫자 4자리)를 정하세요.';
+    : inApp ? '현재 비밀번호를 넣고 새 비밀번호(영문 · 숫자 4~30자)를 정하세요.'
+            : '아이디와 현재 비밀번호를 넣고 새 비밀번호(영문 · 숫자 4~30자)를 정하세요.';
   $('#pfChgLead').hidden = forced;
   $('#pfChgEmpF').hidden = forced || inApp;
   $('#pfChgCurF').hidden = forced;
@@ -4262,13 +4274,13 @@ async function pfChangeLater(){
 async function pfChange(){
   const o = PF_CHG, f = $('#pfChgForm');
   if(o.forced && $('#pfLater').checked) return pfChangeLater();
-  const emp = o.forced || o.inApp ? o.emp : $('#pfChgEmp').value.trim();
-  const old = o.forced ? o.old : $('#pfChgCur').value.trim();
-  const n1 = $('#pfChgNew').value.trim(), n2 = $('#pfChgNew2').value.trim();
+  const emp = o.forced || o.inApp ? o.emp : $('#pfChgEmp').value.trim().toLowerCase();
+  const old = o.forced ? o.old : $('#pfChgCur').value;
+  const n1 = $('#pfChgNew').value, n2 = $('#pfChgNew2').value;
   pfMsg('#pfChgMsg', '');
-  if(!emp) return pfMsg('#pfChgMsg', '아이디(사번)를 입력하세요.');
-  if(!pfPin4(old)) return pfMsg('#pfChgMsg', '현재 비밀번호 숫자 4자리를 입력하세요.');
-  if(!pfPin4(n1)) return pfMsg('#pfChgMsg', '새 비밀번호는 숫자 4자리로 정해 주세요.');
+  if(!emp) return pfMsg('#pfChgMsg', '아이디를 입력하세요.');
+  if(!old) return pfMsg('#pfChgMsg', '현재 비밀번호를 입력하세요.');
+  if(!pfPwOk(n1)) return pfMsg('#pfChgMsg', '새 ' + PF_PW_RULE);
   if(n1 !== n2) return pfMsg('#pfChgMsg', '새 비밀번호 두 칸이 서로 다릅니다.');
   pfBusy(f, true);
   const res = await pfRpc('pf_change_pin', { p_emp: emp, p_old: old, p_new: n1 });
@@ -4278,8 +4290,8 @@ async function pfChange(){
   if(!r.ok){
     if(r.code === 'reset'){ $('#pfChgCur').value = ''; return pfMsg('#pfChgMsg', pfResetMsg(r)); }
     if(r.code === 'badpin') return pfMsg('#pfChgMsg', '현재 ' + pfBadMsg(r));
-    return pfMsg('#pfChgMsg', { nouser:'등록되지 않았거나 이용이 중지된 사번입니다.',
-      same:'지금 비밀번호 · 0000 과 다른 번호로 정해 주세요.', format:'새 비밀번호는 숫자 4자리입니다.' }[r.code]
+    return pfMsg('#pfChgMsg', { nouser:'등록되지 않았거나 이용이 중지된 아이디입니다.',
+      same:'지금 비밀번호와 다른 비밀번호로 정해 주세요.', format:'새 ' + PF_PW_RULE }[r.code]
       || '변경하지 못했습니다. 다시 시도해 주세요.');
   }
   /* 저장해 둔 로그인 정보도 새 비밀번호로 */
@@ -4292,58 +4304,59 @@ async function pfChange(){
   pfMsg('#pfMsg', '비밀번호를 변경했습니다. 새 비밀번호로 로그인하세요.', true);
 }
 
-/* 회원가입 → 승인 대기 + 관리자 메일 */
-/* 승인 메일 링크는 어디서 가입했든 항상 이 주소의 회원 관리 화면으로 엽니다 */
+/* 회원가입 → 바로 로그인 + 관리자에게 가입 알림 메일 */
+/* 알림 메일 링크는 어디서 가입했든 항상 이 주소의 회원 관리 화면으로 엽니다 */
 const PF_ADMIN_PAGE = 'https://simmons-safety.github.io/site/';
 const pfAdminUrl = emp => PF_ADMIN_PAGE + '?admin=users' + (emp ? '&emp=' + encodeURIComponent(emp) : '');
-let PF_SENT_EMP = '';
 async function pfSignup(){
   const f = $('#pfSuForm');
-  const emp = $('#pfSuEmp').value.trim(), name = $('#pfSuName').value.trim();
+  const emp = $('#pfSuEmp').value.trim().toLowerCase(), name = $('#pfSuName').value.trim();
   const site = $('#pfSuSite').value, team = $('#pfSuTeam').value.trim();
-  const p1 = $('#pfSuPin').value.trim(), p2 = $('#pfSuPin2').value.trim();
+  const p1 = $('#pfSuPin').value, p2 = $('#pfSuPin2').value;
   pfMsg('#pfSuMsg', '');
-  if(!/^[0-9A-Za-z-]{4,20}$/.test(emp)) return pfMsg('#pfSuMsg', '아이디(사번)를 정확히 입력하세요.');
+  if(!pfIdOk(emp)) return pfMsg('#pfSuMsg', '아이디는 영문 · 숫자 4~20자로 정해 주세요. (. _ - 사용 가능)');
   if(!name) return pfMsg('#pfSuMsg', '이름을 입력하세요.');
   if(!site) return pfMsg('#pfSuMsg', '사업장을 선택하세요.');
-  if(!pfPin4(p1)) return pfMsg('#pfSuMsg', '비밀번호는 숫자 4자리로 정해 주세요.');
+  if(!pfPwOk(p1)) return pfMsg('#pfSuMsg', PF_PW_RULE);
   if(p1 !== p2) return pfMsg('#pfSuMsg', '비밀번호 두 칸이 서로 다릅니다.');
   pfBusy(f, true);
   const res = await pfRpc('pf_signup', { p_emp: emp, p_name: name, p_site: site, p_team: team, p_pin: p1 });
-  if(res.error){ pfBusy(f, false); return pfMsg('#pfSuMsg', db ? pfRpcErr(res.error) : res.error.message); }
+  pfBusy(f, false);
+  if(res.error) return pfMsg('#pfSuMsg', db ? pfRpcErr(res.error) : res.error.message);
   const r = res.data || {};
   if(!r.ok){
-    pfBusy(f, false);
     return pfMsg('#pfSuMsg', {
-      exists:  r.source === 'roster'
-        ? '이미 등록된 사번입니다. 회원가입 없이 사번과 비밀번호 0000(최초)으로 로그인하세요.'
-        : '이미 가입된 사번입니다. 로그인해 주세요.',
-      pending: '이미 가입 신청이 접수되어 관리자 승인을 기다리고 있습니다.',
-      retired: `이용이 중지된 사번입니다. ${PF_CONTACT}에게 문의해 주세요.`,
-      empfmt:  '아이디(사번)를 정확히 입력하세요.', name:'이름을 입력하세요.', format:'비밀번호는 숫자 4자리입니다.'
-    }[r.code] || '신청하지 못했습니다. 다시 시도해 주세요.');
+      exists:  '이미 사용 중인 아이디입니다. 다른 아이디로 정해 주세요.',
+      retired: `이용이 중지된 아이디입니다. ${PF_CONTACT}에게 문의해 주세요.`,
+      empfmt:  '아이디는 영문 · 숫자 4~20자로 정해 주세요. (. _ - 사용 가능)',
+      name:    '이름을 입력하세요.', format: PF_PW_RULE
+    }[r.code] || '가입하지 못했습니다. 다시 시도해 주세요.');
   }
-  /* 관리자에게 승인 요청 메일 (실패해도 신청은 접수된 상태 — 관리자 화면에 승인 대기로 보입니다) */
+  /* 관리자에게 가입 알림 메일 (보내지 못해도 가입은 끝난 상태 — 기다리지 않습니다) */
   const link = pfAdminUrl(emp);
   const when = new Date().toLocaleString('ko-KR');
-  const rows = [['사번(아이디)', emp], ['이름', name], ['사업장', site], ['소속', team || '-'], ['신청 시각', when]];
-  const text = '[안전보건 통합 플랫폼] 회원가입 승인 요청\n\n'
+  const rows = [['아이디', emp], ['이름', name], ['사업장', site], ['소속', team || '-'], ['가입 시각', when]];
+  const text = '[안전보건 통합 플랫폼] 회원가입 알림\n\n'
     + rows.map(([k, v]) => `${k} : ${v}`).join('\n')
-    + `\n\n아래 링크에서 관리자 비밀번호를 넣고 승인해 주세요.\n${link}`;
+    + `\n\n가입 즉시 이용 중입니다. 확인 · 삭제는 아래 회원 관리 화면에서 할 수 있습니다.\n${link}`;
   const html = `<div style="font-family:'Malgun Gothic',sans-serif;font-size:14px;color:#111;line-height:1.7">
-    <p style="font-size:16px;font-weight:700;margin:0 0 12px">안전보건 통합 플랫폼 · 회원가입 승인 요청</p>
+    <p style="font-size:16px;font-weight:700;margin:0 0 12px">안전보건 통합 플랫폼 · 회원가입 알림</p>
     <table style="border-collapse:collapse;margin:0 0 18px">${rows.map(([k, v]) =>
       `<tr><td style="padding:6px 14px 6px 0;color:#777">${esc(k)}</td><td style="padding:6px 0;font-weight:600">${esc(v)}</td></tr>`).join('')}</table>
-    <a href="${esc(link)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 22px;font-weight:700">가입 승인하러 가기</a>
-    <p style="color:#888;font-size:12px;margin:16px 0 0">링크를 누르면 회원 관리(관리자) 화면이 열립니다. 관리자 비밀번호를 넣고 [승인]을 누르세요.<br>${esc(link)}</p>
+    <a href="${esc(link)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 22px;font-weight:700">회원 관리 열기</a>
+    <p style="color:#888;font-size:12px;margin:16px 0 0">가입 즉시 이용 중입니다. 잘못된 가입이면 회원 관리 화면에서 [삭제(퇴사)]를 누르세요.<br>${esc(link)}</p>
   </div>`;
-  try{ await notifyMail(`[안전보건 플랫폼] 회원가입 승인 요청 — ${name} (${emp})`, text, PF_ADMIN_MAIL, html); }catch(e){}
-  pfBusy(f, false);
-  PF_SENT_EMP = emp;
-  $('#pfSentWho').textContent = `${name} (${emp})`;
+  notifyMail(`[안전보건 플랫폼] 회원가입 알림 — ${name} (${emp})`, text, PF_ADMIN_MAIL, html).catch(() => {});
+  /* 로그인 정보 저장을 켜 두었으면 이 기기에 기억 */
+  const save = $('#pfSave').checked;
+  STORE.set('auth_save', save ? '1' : '0');
+  STORE.set('auth_emp', save ? emp : '');
+  STORE.set('auth_pin', save ? p1 : '');
+  $('#pfEmp').value = emp; $('#pfPin').value = save ? p1 : '';
   ['#pfSuEmp','#pfSuName','#pfSuTeam','#pfSuPin','#pfSuPin2'].forEach(s => $(s).value = '');
   $('#pfSuSite').value = '';
-  pfShow('sent');
+  pfEnter({ emp: r.emp || emp, name: r.name || name, site: r.site || site, team: r.team || team });
+  toast('회원가입이 끝났습니다. 다음부터 이 아이디로 로그인하세요', 'ok');
 }
 
 /* 내 계정 (상단 사람 아이콘) */
@@ -4454,7 +4467,7 @@ async function pfAdminDo(emp, a){
     reject:  `${who} 님의 가입 신청을 반려할까요?`,
     retire:  `${who} 님의 계정을 삭제할까요?\n퇴사 처리되어 더 이상 로그인할 수 없습니다. (나중에 복구 가능)`,
     restore: `${who} 님이 다시 로그인할 수 있게 할까요?`,
-    reset:   `${who} 님의 비밀번호를 최초 발급 비밀번호${u.source === 'roster' ? '(0000)' : '(가입 때 정한 번호)'}로 초기화할까요?`,
+    reset:   `${who} 님의 비밀번호를 회원가입 때 정한 비밀번호로 초기화할까요?`,
     purge:   `${who} 님의 계정을 완전히 지울까요? 되돌릴 수 없습니다.`
   }[a];
   if(!ask || !confirm(ask)) return;
@@ -4482,9 +4495,9 @@ function pfInit(){
   $('#pfChgBack').onclick  = pfChangeBack;
   $('#pfLater').onchange   = pfLaterSync;
   $('#pfSuBack').onclick   = () => pfShow('login');
-  $('#pfSentBack').onclick = () => { $('#pfEmp').value = PF_SENT_EMP; $('#pfPin').value = ''; pfMsg('#pfMsg', ''); pfShow('login'); };
+  /* 비밀번호 칸 : 띄어쓰기는 넣지 않습니다 (숫자 4자리 제한은 2026-11-22 폐지) */
   ['#pfPin','#pfChgCur','#pfChgNew','#pfChgNew2','#pfSuPin','#pfSuPin2'].forEach(s =>
-    $(s).addEventListener('input', e => { const v = e.target.value.replace(/\D/g, '').slice(0, 4); if(v !== e.target.value) e.target.value = v; }));
+    $(s).addEventListener('input', e => { const v = e.target.value.replace(/\s/g, ''); if(v !== e.target.value) e.target.value = v; }));
   $('#pfaLock').onsubmit = e => { e.preventDefault(); const pw = $('#pfaPw').value.trim(); if(pw){ pfMsg('#pfaMsg', ''); pfAdminLoad(pw, true); } };
   $('#pfaClose').onclick = pfAdminClose;
   $('#pfaTabs').onclick = e => { const b = e.target.closest('[data-t]'); if(!b) return; PFA.tab = b.dataset.t; PFA.focus = ''; pfAdminRender(); };
@@ -4506,6 +4519,7 @@ function connect(url, key){
     STORE.set('url', url.trim()); STORE.set('key', key.trim());
     $('#setup').hidden = true; $('#app').hidden = false;
     $('#cfgUrl2').value = url; $('#cfgKey2').value = key;
+    if(WP_GUEST.mode){ wpGuestStart(); return true; }   /* 안전작업허가 외부 링크 : 로그인 없이 그 화면만 */
     if(!PF_AUTH.ok) document.documentElement.classList.add('pf-locked');   /* 자료는 로그인한 뒤에 불러옵니다 */
     pfWhenIn(boot);
     return true;
@@ -5219,15 +5233,71 @@ const WP_FLOW_N = {
 };
 const WP_CLOSE_N = [ { k:'close_dept', label:'작업부서 담당자' }, { k:'close_head', label:'작업부서 팀장' } ];
 const WP_WORK_HOURS = '일과시간 8시간 내(08:30 ~ 17:30) 초과 시 시간 연장 허가';
+/* ── 밀폐공간 작업 (2026-11-26) : 부서 · 일반/긴급 상관없이 작업부서 팀장 없이
+      1차 담당자(WP_CONF_MGR) → 2차 안전보건팀장 결재. 메일은 결재 차례인 사람 + WP_MAIL_ALWAYS 에게만.
+      신청 때 손서명을 받고, 결재 메일 링크(?wpa=ID&k=키)는 로그인 없이 그 허가서 결재 화면을 엽니다.
+      이 흐름은 signs.applicant.gk(결재 링크 키)가 있는 허가서만 — 바꾸기 전에 낸 허가서는 예전 순서 그대로 */
+const WP_CONF_MGR = { name:'이재훈', mail:'jaehoonyi@simmons.co.kr' };
+const WP_CONF_APPROVE = [
+  { k:'safety',  label:'1차 담당자',   step:'1차 결재', note:'safety' },
+  { k:'hs_head', label:'안전보건팀장', step:'2차 결재' }
+];
+/* 작업종료 : 1차 담당자가 작업완료 확인하면서 '안전보건팀장 확인' 체크 → 바로 완료 (cf = 꼭 체크할 확인 문구) */
+const WP_CONF_CLOSE = [ { k:'close_safety', label:'1차 담당자', cf:'hs' } ];
+const wpIsConf = p => (p.work_types || []).includes('밀폐공간') && (!p.signs || !!((p.signs || {}).applicant || {}).gk);
 /* 예전 기록(urgent 칸이 없던 때)은 모두 긴급으로 봅니다 */
 const wpIsUrg = p => p.urgent !== false;
-const wpFlowOf = p => (wpIsUrg(p) ? WP_FLOW : WP_FLOW_N)[p.kind] || (wpIsUrg(p) ? WP_FLOW : WP_FLOW_N)['임직원'];
-const wpCloseOf = p => wpIsUrg(p) ? WP_CLOSE : WP_CLOSE_N;
+const wpFlowOf = p => {
+  const b = (wpIsUrg(p) ? WP_FLOW : WP_FLOW_N)[p.kind] || (wpIsUrg(p) ? WP_FLOW : WP_FLOW_N)['임직원'];
+  return wpIsConf(p) ? { apply:b.apply, approve:WP_CONF_APPROVE } : b;
+};
+const wpCloseOf = p => wpIsConf(p) ? WP_CONF_CLOSE : wpIsUrg(p) ? WP_CLOSE : WP_CLOSE_N;
 const wpKindLbl = p => (wpIsUrg(p) ? '긴급 · ' : '') + (p.kind === '협력사' ? '협력사용' : '임직원용');
 /* 일과시간(08:30~17:30)을 넘거나 날짜가 바뀌는 작업 */
 const wpOverTime = (s, e) => !!(s && e) && (s.slice(0,10) !== e.slice(0,10) || s.slice(11,16) < '08:30' || e.slice(11,16) > '17:30');
 const WP_BUCKET = 'tbm-materials';
 const WP_DEL_PW = '8587';   // 허가서 삭제 비밀번호
+
+/* 로그인 없이 여는 외부 링크 (방문 안전 서약서처럼)
+   ?wpx=confined      → 밀폐공간 작성 · 제출 화면만 (QR : 안전작업허가_밀폐공간_QR.html)
+   ?wpa=ID&k=키       → 밀폐공간 결재 메일 링크 : 그 허가서 한 건만 열어 결재 */
+const WP_GUEST = (() => {
+  const q = new URLSearchParams(location.search);
+  if(q.get('wpa')) return { mode:'approve', id:q.get('wpa'), key:q.get('k') || '' };
+  if(q.has('wpx')) return { mode:'write' };
+  return { mode:'' };
+})();
+function wpGuestStart(){
+  document.documentElement.classList.add('wp-guest', 'wp-guest-' + WP_GUEST.mode);
+  $$('.panel').forEach(s => s.hidden = s.id !== 'p-permit');
+  const hero = document.getElementById('hero'); if(hero) hero.hidden = true;
+  if(WP_GUEST.mode === 'write'){
+    wpSetMode('협력사');
+    wpResetForm();                 // 밀폐공간 체크된 상태로
+    return;
+  }
+  wpGuestOpen();
+}
+/* 결재 링크 : 키가 맞는 허가서 한 건만 불러와 엽니다 */
+async function wpGuestOpen(){
+  const msg = (big, s) => { $('#wpGuestMsg').innerHTML = wpEmptyBox(big, s); };
+  msg('불러오는 중…', '');
+  const { data, error } = await db.from('work_permits').select('*').eq('id', WP_GUEST.id).maybeSingle();
+  if(error || !data || ((data.signs || {}).applicant || {}).gk !== WP_GUEST.key)
+    return msg('허가서를 열 수 없습니다', '삭제되었거나 링크가 올바르지 않습니다. 메일의 링크를 다시 눌러 주세요.');
+  WP_ALL = [data];
+  const nx = wpNext(data);
+  msg(`${esc(data.permit_no || '')} ${esc(data.work_name || '')}`,
+    `상태 : ${esc(data.status)}${nx ? ` · 다음 : ${esc(nx.role.label)}` : ''}<br><br>
+     <button class="btn" type="button" onclick="wpOpen(WP_ALL[0] && WP_ALL[0].id)">허가서 열기</button>`);
+  wpOpen(data.id);
+}
+function wpGuestDone(no){
+  $('#wpGuestMsg').innerHTML = wpEmptyBox(`${esc(no)} 제출 완료`,
+    `1차 담당자(${esc(WP_CONF_MGR.name)})에게 결재 요청 메일이 갔습니다. 결재가 끝나면 작업을 시작해 주세요.<br><br>
+     <button class="btn ghost" type="button" onclick="$('#wpGuestMsg').innerHTML='';scrollTo(0,0)">새 허가서 작성</button>`);
+  $('#wpGuestMsg').scrollIntoView({ behavior:'smooth', block:'center' });
+}
 
 let WP_URGENT = false;
 let WP_KIND = '임직원', WP_SEL = new Set(), WP_ANS = {}, WP_CHEM_ON = false, WP_CHEM_ANS = [];
@@ -5305,11 +5375,16 @@ function wpSetKind(k){
   $('#wpKindNote').textContent = lbl;
   $('#wpModeLbl').textContent = WP_URGENT ? '긴급 안전작업허가' : `안전작업허가 · 일반 (임직원 및 협력사)${k ? ' · ' + lbl : ''}`;
   $('#wpModeLbl').classList.toggle('urg', WP_URGENT);
-  const p = { urgent:WP_URGENT, kind:k }, f = wpFlowOf(p);
-  $('#wpFlowHint').innerHTML = `제출하면 <b>${esc(f.apply.label)}</b> 서명 창이 열립니다. 이후 결재는
-    ${f.approve.map(r => `<b>${esc(r.label)}</b>`).join(' → ')} 순으로 진행되고,
-    작업이 끝나면 ${wpCloseOf(p).map(r => `<b>${esc(r.label)}</b>`).join(' · ')}가 작업종료 서명을 합니다.`;
+  wpFlowHint();
   wpExtHint();
+}
+/* 제출 카드의 결재 순서 안내 (구분 · 작업 종류가 바뀔 때마다) */
+function wpFlowHint(){
+  const p = { urgent:WP_URGENT, kind:WP_KIND, work_types:[...WP_SEL] }, f = wpFlowOf(p), conf = wpIsConf(p);
+  const who = r => conf ? wpApprover(p, r.k).map(x => x.name).join(', ') : '';
+  $('#wpFlowHint').innerHTML = `제출하면 <b>${esc(f.apply.label)}</b> 서명 창이 열립니다${conf ? ' (밀폐공간 작업 : 직접 손서명)' : ''}. 이후 결재는
+    ${f.approve.map(r => `<b>${esc(r.label)}${who(r) ? ` (${esc(who(r))})` : ''}</b>`).join(' → ')} 순으로 진행되고,
+    작업이 끝나면 ${wpCloseOf(p).map(r => `<b>${esc(r.label)}</b>`).join(' · ')}가 작업종료 서명을 합니다.`;
 }
 /* 일반 허가서 : 일과시간을 넘으면 시간연장 허가가 필요하다고 알려 줍니다 */
 function wpExtHint(){
@@ -5326,6 +5401,7 @@ function wpRenderForm(){
     `<button class="wpchip" data-wptype="${esc(t)}" aria-pressed="${WP_SEL.has(t)}">${esc(t)}</button>`).join('');
   $('#wpChkCard').hidden = !wpChkGroups().length;
   wpRenderChecks();
+  wpFlowHint();
   const gasOn = wpGasOn([...WP_SEL]);
   $('#wpGasCard').hidden = !gasOn;
   if(gasOn) $('#wpGas').innerHTML = wpGasHtml(WP_GAS, true);
@@ -5412,19 +5488,32 @@ const WP_SAFETY_FIX = {
 const wpSafetyOf = dept => WP_SAFETY_FIX[dept] || WP_SAFETY_MGRS;
 /* 안전작업허가 메일은 모두 이 주소에도 함께 보냅니다 */
 const WP_MAIL_ALWAYS = ['hk7149@simmons.co.kr'];
+/* 잠시 중지 : true 면 팀장·안전관리자·안전보건팀장에게는 안 보내고 WP_MAIL_ALWAYS(hk7149) 에게만 보냄
+   복구 시 false 로 */
+const WP_MAIL_ONLY_ADMIN = false;
 /* 결재 단계(k) → 담당자 목록 [{ name, mail }] (작업부서 팀장은 허가서의 부서로 찾음) */
 function wpApprover(p, k){
+  if(wpIsConf(p) && (k === 'safety' || k === 'close_safety')) return [WP_CONF_MGR];
+  if(k === 'close_hs') return [WP_HS_HEAD];
   if(k === 'dept_head' || k === 'close_head') return WP_HEADS[p.dept] ? [WP_HEADS[p.dept]] : [];
   if(k === 'safety' || k === 'close_safety') return wpSafetyOf(p.dept);
   if(k === 'hs_head') return [WP_HS_HEAD];
   return [];
 }
+/* 현장 플랫폼 실제 주소 (외부 작성 링크 · 밀폐공간 결재 링크) */
+const WP_SITE_URL = 'https://simmons-safety.github.io/site/';
+/* '모두에게' 보내는 알림 (최종 결재 완료 · 시간연장 승인) 받는 사람 */
+const wpAllOf = p => wpIsConf(p) ? [WP_CONF_MGR, WP_HS_HEAD] : [WP_HEADS[p.dept], ...wpSafetyOf(p.dept), WP_HS_HEAD];
 /* 결재 알림 메일 : to = 받는 사람 목록, head = 첫 줄 안내 */
 async function wpMail(p, to, subj, head){
-  const list = [...new Set([...to.filter(x => x && x.mail).map(x => x.mail), ...WP_MAIL_ALWAYS])];
+  const list = [...new Set([...(WP_MAIL_ONLY_ADMIN ? [] : to.filter(x => x && x.mail).map(x => x.mail)), ...WP_MAIL_ALWAYS])];
   if(!list.length) return null;
   /* 링크를 누르면 안전작업허가 → 결재 · 진행 → 이 허가서가 바로 열립니다 */
-  const link = /^https?:/.test(location.protocol) && p.id
+  /* 밀폐공간(새 흐름)은 로그인 없이 그 허가서 결재 화면이 열리는 링크 */
+  const gk = ((p.signs || {}).applicant || {}).gk;
+  const link = wpIsConf(p) && gk && p.id
+    ? `${WP_SITE_URL}?wpa=${encodeURIComponent(p.id)}&k=${encodeURIComponent(gk)}`
+    : /^https?:/.test(location.protocol) && p.id
     ? `${location.origin}${location.pathname}?go=permit&wp=${encodeURIComponent(p.id)}` : '';
   const rows = [
     ['허가번호', p.permit_no || ''], ['구분', wpKindLbl(p)], ['부서', wpWho(p)], ['작업명', p.work_name || ''],
@@ -5496,7 +5585,8 @@ function wpGasBad(gas){
 }
 
 function wpResetForm(){
-  WP_SEL = new Set(); WP_ANS = {}; WP_CHEM_ON = false; WP_CHEM_ANS = []; WP_GAS = wpEmptyGas();
+  WP_SEL = new Set(WP_GUEST.mode === 'write' ? ['밀폐공간'] : []);   // 외부 작성 링크는 밀폐공간 고정
+  WP_ANS = {}; WP_CHEM_ON = false; WP_CHEM_ANS = []; WP_GAS = wpEmptyGas();
   WP_FILES = []; wpRenderFiles();
   $('#wpDate').value = TODAY; $('#wpDate').dispatchEvent(new Event('change'));
   ['#wpName','#wpDesc','#wpWorkers','#wpEquip','#wpCompany','#wpCoMgr'].forEach(s => $(s).value = '');
@@ -5597,11 +5687,12 @@ async function wpNextNo(date){
 function wpSubmit(){
   const f = wpCollect();
   if(!f) return;
-  const flow = wpFlowOf(f), notes = wpNotes(flow.apply.note);
+  const flow = wpFlowOf(f), notes = wpNotes(flow.apply.note), conf = wpIsConf(f);
   openWpSign({
     title: `신청 서명 · ${flow.apply.label}`,
-    sub: `${f.work_name} — 서명하면 ${flow.approve[0].label}에게 결재가 올라갑니다.`,
-    okText: '승인 후 제출',
+    sub: `${f.work_name} — 서명하면 ${flow.approve[0].label}${conf ? `(${WP_CONF_MGR.name})` : ''}에게 결재가 올라갑니다.`,
+    okText: conf ? '서명 후 제출' : '승인 후 제출',
+    pad: conf,                                   // 밀폐공간 : 손서명 받음
     extra: notes.map(k => `<div class="wpx"><label>${WP_NOTE[k][0]}</label>
       <textarea data-wpxnote="${k}" placeholder="점검 결과 · 추가 지시사항 (선택)"></textarea></div>`).join(''),
     after: wpConfirmHtml(flow.apply.note),
@@ -5609,6 +5700,7 @@ function wpSubmit(){
     async onOk(sg){
       notes.forEach(k => f[WP_NOTE[k][1]] = $(`[data-wpxnote="${k}"]`).value.trim());
       const sign = await wpUploadSign(sg, wpConfirmText(flow.apply.note));
+      if(conf) sign.gk = wpRandKey();              // 밀폐공간 결재 링크 키 (= 새 흐름 표시)
       const permit_no = await wpNextNo(f.apply_date);
       const files = WP_FILES.length ? await wpUploadFiles(permit_no) : [];
       const row = { ...f, permit_no, status:'결재대기', signs:{ applicant:sign }, created_by:sg.name };
@@ -5632,13 +5724,14 @@ function wpSubmit(){
       }
       if(f.kind === '협력사') STORE.set('wpWorkDept', f.dept);
       else STORE.set('wpDept', f.dept);
-      /* 제출 알림 : 작업부서 팀장 · 안전관리자 · 안전보건팀장 */
+      /* 제출 알림 : 작업부서 팀장 · 안전관리자 · 안전보건팀장 (밀폐공간 = 1차 담당자에게만) */
       const first = flow.approve[0];
-      const sent = await wpMail(row, [WP_HEADS[f.dept], ...wpSafetyOf(f.dept), WP_HS_HEAD], `결재 요청 (${first.label})`,
+      const sent = await wpMail(row, conf ? wpApprover(row, first.k) : [WP_HEADS[f.dept], ...wpSafetyOf(f.dept), WP_HS_HEAD], `결재 요청 (${first.label})`,
         `안전작업허가서가 제출되었습니다. 결재 순서 : ${flow.approve.map(r => r.label).join(' → ')} (현재 ${first.label} 결재 차례)`);
       toast(`${permit_no} 허가서를 제출했습니다 · 결재 대기${mailTail(sent)}`
-        + (WP_HEADS[f.dept] ? '' : ' (기타 부서라 팀장 메일은 보내지 않았습니다)'), sent === false ? 'err' : 'ok');
+        + (conf || WP_HEADS[f.dept] ? '' : ' (기타 부서라 팀장 메일은 보내지 않았습니다)'), sent === false ? 'err' : 'ok');
       wpResetForm();
+      if(WP_GUEST.mode === 'write'){ wpGuestDone(permit_no); return; }   // 외부 링크 : 목록으로 가지 않음
       await loadPermits();
       const b = $('#p-permit .subnav [data-s="flow"]');
       if(b) b.click();
@@ -5651,10 +5744,22 @@ function wpSubmit(){
 async function wpUploadSign(sg, confirm){
   const s = { name:sg.name, stamp:true, at:new Date().toISOString() };
   if(confirm) s.confirm = confirm;
+  /* 손서명(밀폐공간 신청) : PNG 를 permit/sign/ 에 올리고 주소를 남깁니다 (올리기 실패 시 이미지 자체를 저장) */
+  if(sg.img){
+    delete s.stamp;
+    const path = `permit/sign/${TODAY}/${Date.now()}_${wpRandKey().slice(0, 6)}.png`;
+    try{
+      const blob = await (await fetch(sg.img)).blob();
+      const { error } = await db.storage.from(WP_BUCKET).upload(path, blob, { contentType:'image/png', cacheControl:'3600' });
+      if(error) throw error;
+      s.path = path; s.url = db.storage.from(WP_BUCKET).getPublicUrl(path).data.publicUrl;
+    }catch(e){ s.url = sg.img; }
+  }
   return s;
 }
+const wpRandKey = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join('');
 /* 서명란 아래 부서장 확인 체크 (note : dept | safety | 둘의 배열) */
-const WP_CONFIRM = { dept:'작업부서장 확인', safety:'안전부서장 확인' };
+const WP_CONFIRM = { dept:'작업부서장 확인', safety:'안전부서장 확인', hs:'안전보건팀장 확인' };
 const WP_NOTE = { dept:['작업부서장 점검사항','dept_note'], safety:['안전관리자 점검사항','safety_note'] };
 const wpNotes = note => [].concat(note || []).filter(k => WP_CONFIRM[k]);
 const wpConfirmHtml = note => wpNotes(note).map(k =>
@@ -5681,7 +5786,47 @@ function openWpSign(opts){
   $('#wpSignAfter').innerHTML = opts.after || '';
   $('#btnWpReject').hidden = !opts.onReject;
   $('#btnWpSignOk').textContent = opts.okText || '승인';
+  $('#wpSignPadWrap').hidden = !opts.pad;
+  $('#wpSignStampHint').hidden = !!opts.pad;
   $('#wpSignModal').classList.add('on');
+  if(opts.pad) requestAnimationFrame(wpPadReset);
+}
+/* 손서명 패드 (보호구 수령 서명과 같은 방식) */
+function wpPadReset(){
+  const c = $('#wpSignCanvas'), r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr); ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#000'; ctx.fillStyle = '#000';
+  WP_PAD.ctx = ctx; WP_PAD.drawn = false; $('#wpSignPh').hidden = false;
+}
+function wpPadBind(){
+  const c = $('#wpSignCanvas'); let down = false, lx = 0, ly = 0;
+  const pt = e => { const r = c.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  c.addEventListener('pointerdown', e => {
+    if(!WP_PAD.ctx) return;
+    e.preventDefault(); down = true; c.setPointerCapture(e.pointerId); [lx, ly] = pt(e);
+    WP_PAD.ctx.beginPath(); WP_PAD.ctx.arc(lx, ly, 1.2, 0, Math.PI*2); WP_PAD.ctx.fill();
+    WP_PAD.drawn = true; $('#wpSignPh').hidden = true;
+  });
+  c.addEventListener('pointermove', e => {
+    if(!down) return; e.preventDefault();
+    const [x, y] = pt(e);
+    WP_PAD.ctx.beginPath(); WP_PAD.ctx.moveTo(lx, ly); WP_PAD.ctx.lineTo(x, y); WP_PAD.ctx.stroke();
+    lx = x; ly = y;
+  });
+  const up = () => { down = false; };
+  c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
+  $('#btnWpPadClear').onclick = wpPadReset;
+}
+/* 흰 바탕 PNG (최대 폭 600px) */
+function wpPadImage(){
+  const c = $('#wpSignCanvas'), k = Math.min(1, 600 / c.width);
+  const o = document.createElement('canvas');
+  o.width = Math.round(c.width * k); o.height = Math.round(c.height * k);
+  const x = o.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, o.width, o.height);
+  x.drawImage(c, 0, 0, o.width, o.height);
+  return o.toDataURL('image/png');
 }
 async function wpSignOk(){
   const o = WP_PAD.opts;
@@ -5690,10 +5835,11 @@ async function wpSignOk(){
   if(!name){ toast('이름을 입력해 주세요','err'); $('#wpSignName').focus(); return; }
   const msg = o.check && o.check();
   if(msg) return toast(msg,'err');
+  if(o.pad && !WP_PAD.drawn) return toast('서명란에 서명해 주세요','err');
   const btn = $('#btnWpSignOk'), label = btn.textContent;
   btn.disabled = true; btn.textContent = '저장 중…';
   try{
-    await o.onOk({ name });
+    await o.onOk(o.pad ? { name, img: wpPadImage() } : { name });
     if(!o.name && !o.names) STORE.set('wpName', name);   // 자동 기입된 결재자 이름은 신청자 이름으로 기억하지 않음
     WP_PAD.opts = null;
     $('#wpSignModal').classList.remove('on');
@@ -5744,7 +5890,7 @@ function wpAct(id){
     </div>`);
   }
   /* 작업부서장 확인 · 안전부서장 확인 체크는 긴급 허가서에만 받습니다 */
-  const cf = wpIsUrg(p) ? r.note : null;
+  const cf = r.cf || (wpIsUrg(p) ? r.note : null);   // r.cf : 밀폐공간 작업종료 안전보건팀장 확인
   const needDone = nx.stage === 'close' && !p.done_at;
   if(needDone){
     const n = new Date();
@@ -5811,9 +5957,8 @@ function wpAct(id){
         sent = await wpMail(np, wpApprover(p, nn.role.k), `결재 요청 (${nn.role.label})`,
           `${r.label} ${sg.name} 님이 결재했습니다. ${nn.role.label} 결재 차례입니다.`);
       else if(nx.stage === 'approve')
-        sent = await wpMail(np, [WP_HEADS[p.dept], ...wpSafetyOf(p.dept), WP_HS_HEAD], '결재 완료 · 작업 시작 가능',
-          `${r.label} ${sg.name} 님의 최종 결재로 안전작업허가 결재가 모두 끝났습니다. 작업을 시작할 수 있습니다.`);
-      toast((patch.status === '작업중' ? '결재가 끝났습니다 · 작업을 시작할 수 있습니다'
+        sent = await wpMail(np, wpAllOf(p), '결재 완료 · 작업 시작 가능',
+          `${r.label} ${sg.name} 님의 최종 결재로 안전작업허가 결재가 모두 끝났습니다. 작업을 시작할 수 있습니다.`);      toast((patch.status === '작업중' ? '결재가 끝났습니다 · 작업을 시작할 수 있습니다'
           : patch.status === '완료' ? '작업 완료 처리했습니다' : `결재했습니다 · 다음 ${nn.role.label}`) + mailTail(sent),
           sent === false ? 'err' : 'ok');
       await afterSave();
@@ -5925,7 +6070,7 @@ function wpExtApprove(id){
       signs.ext_ok = await wpUploadSign(sg, '시간연장 허가');
       const { error } = await db.from('work_permits').update({ signs, ext_ok:true, updated_at:new Date().toISOString() }).eq('id', p.id);
       if(error) throw new Error('저장 실패: '+error.message);
-      const sent = await wpMail({ ...p, signs }, [WP_HEADS[p.dept], ...wpSafetyOf(p.dept), WP_HS_HEAD], '시간 연장 허가 승인',
+      const sent = await wpMail({ ...p, signs }, wpAllOf(p), '시간 연장 허가 승인',
         `${WP_EXT_LABEL} ${sg.name} 님이 시간 연장을 허가했습니다.\n연장 : ${wpDT(p.end_at)} → ${wpDT(q.until)} 까지 (신청 ${q.name})`);
       toast('시간 연장을 허가했습니다' + mailTail(sent), sent === false ? 'err' : 'ok');
       await wpExtAfter(p.id);
@@ -6092,7 +6237,7 @@ function wpDocHtml(p){
     <colgroup><col style="width:11%"><col style="width:15%"><col><col></colgroup>
     <tr><th rowspan="2">작업완료<br>확인</th><th>완료일시</th><td colspan="2">${wpDT(p.done_at)}</td></tr>
     <tr><th>작업종료 서명</th>
-      ${C.map(r => `<td class="sg"><span class="lb2">${esc(r.label)}</span>${wpSignCell(s[r.k], p.end_at || p.start_at)}</td>`).join('')}</tr>
+      ${C.map(r => `<td class="sg"${C.length === 1 ? ' colspan="2"' : ''}><span class="lb2">${esc(r.label)}</span>${wpSignCell(s[r.k], p.end_at || p.start_at)}</td>`).join('')}</tr>
   </table>
   ${(p.files || []).length ? (() => {
     const link = x => `<a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:#111;margin-right:14px;white-space:nowrap">📎 ${esc(x.name)}</a>`;
@@ -6264,6 +6409,16 @@ async function wpDel(id){
 /* ── 결재 · 진행 목록 ── */
 async function loadPermits(){
   if(!db) return;
+  if(WP_GUEST.mode === 'write') return;                 // 외부 작성 링크 : 목록을 불러오지 않음
+  if(WP_GUEST.mode === 'approve'){                      // 결재 링크 : 그 허가서 한 건만 다시
+    const { data } = await db.from('work_permits').select('*').eq('id', WP_GUEST.id).maybeSingle();
+    WP_ALL = data ? [data] : [];
+    const nx = data && wpNext(data);
+    if(data) $('#wpGuestMsg').innerHTML = wpEmptyBox(`${esc(data.permit_no || '')} ${esc(data.work_name || '')}`,
+      `상태 : ${esc(data.status)}${nx ? ` · 다음 : ${esc(nx.role.label)}` : ' · 처리할 결재가 없습니다'}<br><br>
+       <button class="btn" type="button" onclick="wpOpen(WP_ALL[0] && WP_ALL[0].id)">허가서 열기</button>`);
+    return;
+  }
   try{
     const { data, error } = await db.from('work_permits').select('*')
       .order('created_at', { ascending:false }).limit(1000);
@@ -6393,7 +6548,7 @@ function wpExportCsv(){
           : st === '반려' ? `반려 (${q.reject.name}: ${q.reject.reason})`
           : wpOverTime(p.start_at, p.end_at) ? '미신청' : '해당없음'; })(),
       p.safety_note || '', p.dept_note || '', chk, p.chem ? '전 항목 양호' : '해당없음', wpGasBad(p.gas).join(' / '),
-      wpDT(p.done_at), nm(s.close_dept), nm(s.close_head), nm(s.close_safety), p.reject ? `${p.reject.name}: ${p.reject.reason}` : ''];
+      wpDT(p.done_at), nm(s.close_dept), nm(s.close_head || s.close_hs), nm(s.close_safety), p.reject ? `${p.reject.name}: ${p.reject.reason}` : ''];
   }));
 }
 
@@ -6435,6 +6590,7 @@ function wpInit(){
   $('#wpTypes').onclick = e => {
     const b = e.target.closest('[data-wptype]'); if(!b) return;
     const t = b.dataset.wptype;
+    if(WP_GUEST.mode === 'write' && t === '밀폐공간') return toast('이 화면은 밀폐공간 작업 전용입니다', 'err');
     if(WP_SEL.has(t)) WP_SEL.delete(t); else WP_SEL.add(t);
     wpRenderForm();
   };
@@ -6489,6 +6645,7 @@ function wpInit(){
   $('#wpSignName').addEventListener('input', () =>
     $$('#wpSignNames [data-wpname]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.wpname === $('#wpSignName').value.trim()))));
   $('#btnWpReject').onclick = wpRejectClick;
+  wpPadBind();
 }
 
 /* ===================== PDF 미리보기 ===================== */
@@ -8059,7 +8216,8 @@ const WK_DEV = { iphone:'아이폰', galaxy:'갤럭시', etc:'기타' };
 const WK_SRC = { ios:'아이폰 자동', android:'갤럭시 자동', manual:'직접 입력' };
 const HB = { board:'walk', tab:'notice', bound:false, key:'', dept:'' };
 const WK = { parts:[], steps:[], stepsYm:'', notices:[], me:null, admin:{}, cfg:{}, err:'',loading:false, ym:'', lastCut:'', applyDev:'iphone' };
-const OH = { posts:[], err:'', files:[], ex:'', loaded:false };
+const OH = { posts:[], err:'', files:[], ex:'', loaded:false,
+             tab:'feed', ym:'', dept:'', goals:{}, mon:{}, monBusy:{}, monErr:'', goalEdit:false, goalYm:'' };
 const OH_EX = ['걷기','러닝','헬스','홈트','요가 · 스트레칭','자전거','등산','수영','구기 운동','기타'];
 
 const wkNum = n => Math.round(Number(n || 0)).toLocaleString('ko-KR');
@@ -8900,24 +9058,207 @@ async function hbClick(e){
 }
 function hbChange(e){
   if(e.target.matches('[data-wkdept]')){ HB.dept = e.target.value; HB.key = ''; renderHealth(); }
+  if(e.target.matches('[data-ohdept]')){ OH.dept = e.target.value; HB.key = ''; renderHealth(); }
+  /* 목표 설정 : 적용 월을 바꾸면 그 달 목표 값으로 칸을 다시 채웁니다 */
+  if(e.target.id === 'ohgYm'){
+    const g = ohGoal(e.target.value); OH.goalYm = e.target.value;
+    $('#ohgEx').value = g.ex; $('#ohgWk').value = g.perWeek; $('#ohgMin').value = g.min;
+  }
   if(e.target.id === 'ohFile') ohPick(e.target.files);
 }
 
 /* ===================== 오운완 ===================== */
 async function ohLoad(){
-  const { data, error } = await db.from('health_posts').select('*').eq('board', 'ohunwan')
-    .order('created_at', { ascending:false }).limit(300);
+  const [res, cfg] = await Promise.all([
+    db.from('health_posts').select('*').eq('board', 'ohunwan').order('created_at', { ascending:false }).limit(300),
+    db.from('walk_config').select('value').eq('key', 'oh_goal').maybeSingle()
+  ]);
+  const { data, error } = res;
   OH.err = error ? error.message : ''; OH.posts = data || []; OH.loaded = true;
+  OH.goals = ohParseGoals(cfg && cfg.data && cfg.data.value);   // 표가 없어도 기본 목표로 동작
+  OH.mon = {}; OH.monBusy = {};                                  // 월별 실적은 새로 집계
   renderHealth();
 }
+
+/* ── 오운완 개인별 실적 : 1개월 단위 목표 (기본 주 3회 · 러닝 · 1회 1시간 이상) ──
+   목표는 walk_config 'oh_goal' 에 {"2026-11":{"perWeek":3,"min":60,"ex":"러닝"}, …} 로 저장합니다.
+   그 달 목표가 없으면 가장 가까운 지난달 목표, 그것도 없으면 기본값을 씁니다.
+   월 목표 횟수 = 주 n회 × (그 달 일수 ÷ 7) 반올림  (예 : 30일 달 → 13회)
+   인정 = 목표 운동 종류 + 운동 시간이 목표 분 이상인 인증. 같은 날 여러 번 올려도 1회로 셉니다.
+   달성률 = 인정 횟수 ÷ 월 목표 횟수 (최대 100%) */
+const OH_GOAL_DEF = { perWeek:3, min:60, ex:'러닝' };
+function ohParseGoals(v){ try{ const o = JSON.parse(v || '{}'); return o && typeof o === 'object' ? o : {}; }catch(e){ return {}; } }
+function ohGoal(ym){
+  const g = OH.goals || {};
+  const k = g[ym] ? ym : Object.keys(g).filter(x => x < ym).sort().pop();
+  return { ...OH_GOAL_DEF, ...(k ? g[k] : {}) };
+}
+const ohTarget = (g, ym) => Math.max(1, Math.round(g.perWeek * wkDaysIn(ym) / 7));
+const ohMinText = m => m >= 60 && m % 60 === 0 ? `${m / 60}시간` : m > 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`;
+const ohGoalText = g => `주 ${g.perWeek}회 · ${g.ex === '전체' ? '운동 종류 무관' : g.ex} ${ohMinText(g.min)} 이상`;
+const ohNextYm = () => { const d = new Date(+TODAY.slice(0,4), +TODAY.slice(5,7), 1); return wkYm(ymd(d)); };
+/** 그 달에서 지난 날 수 (이번 달 = 오늘까지) */
+function ohElapsed(ym){
+  const cur = TODAY.slice(0,7);
+  return ym < cur ? wkDaysIn(ym) : ym === cur ? +TODAY.slice(8,10) : 0;
+}
+function ohMonths(){
+  const cur = TODAY.slice(0,7);
+  const start = OH.posts.reduce((a,p) => { const m = wkYm(ymd(new Date(p.created_at))); return m < a ? m : a; }, cur);
+  const out = []; let [y,m] = cur.split('-').map(Number);
+  while(out.length < 12){
+    const k = `${y}-${String(m).padStart(2,'0')}`; out.push(k);
+    if(k <= start) break;
+    if(--m === 0){ m = 12; y--; }
+  }
+  return out;
+}
+/** 그 달 인증 전부 (300건 제한 없이) */
+async function ohFetchMon(ym){
+  if(OH.monBusy[ym]) return;
+  OH.monBusy[ym] = true;
+  const [y,m] = ym.split('-').map(Number);
+  const from = new Date(y, m - 1, 1).toISOString(), to = new Date(y, m, 1).toISOString();
+  const out = [];
+  try{
+    for(let i = 0; ; i += 1000){
+      const { data, error } = await db.from('health_posts').select('name,dept,exercise,minutes,created_at')
+        .eq('board', 'ohunwan').gte('created_at', from).lt('created_at', to).order('created_at').range(i, i + 999);
+      if(error) throw error;
+      out.push(...(data || []));
+      if(!data || data.length < 1000) break;
+    }
+    OH.mon[ym] = out; OH.monErr = '';
+  }catch(e){ OH.monErr = e.message; }
+  OH.monBusy[ym] = false;
+  if(HB.board === 'ohunwan' && OH.tab === 'rank'){ HB.key = ''; renderHealth(); }
+}
+function ohBoard(ym){
+  const g = ohGoal(ym), tgt = ohTarget(g, ym), dim = wkDaysIn(ym);
+  const [y,m] = ym.split('-').map(Number);
+  const off = (new Date(y, m - 1, 1).getDay() + 6) % 7;          // 월요일 시작 주
+  const nW = Math.ceil((dim + off) / 7);
+  const weekDays = Array.from({ length:nW }, (_, w) => Math.min(dim, w * 7 + 7 - off) - Math.max(1, w * 7 + 1 - off) + 1);
+  const map = new Map();
+  (OH.mon[ym] || []).forEach(p => {
+    const name = String(p.name || '').trim(); if(!name) return;
+    const dept = String(p.dept || '').trim(), k = dept + '|' + name;
+    let r = map.get(k);
+    if(!r){ r = { k, name, dept, posts:0, days:new Set(), mins:0, weeks:Array(nW).fill(0) }; map.set(k, r); }
+    r.posts++;
+    const day = new Date(p.created_at).getDate();
+    if((g.ex === '전체' || p.exercise === g.ex) && (+p.minutes || 0) >= g.min){
+      r.mins += +p.minutes || 0;
+      if(!r.days.has(day)){ r.days.add(day); r.weeks[Math.floor((day - 1 + off) / 7)]++; }
+    }
+  });
+  const rows = [...map.values()].map(r => ({ ...r, cnt:r.days.size, pct:Math.min(100, r.days.size / tgt * 100), done:r.days.size >= tgt }))
+    .sort((a,b) => b.cnt - a.cnt || b.mins - a.mins || a.name.localeCompare(b.name, 'ko'));
+  let rk = 0, prev = -1;
+  rows.forEach((r,i) => { if(r.cnt !== prev){ rk = i + 1; prev = r.cnt; } r.rank = rk; });
+  return { g, tgt, nW, weekDays, rows };
+}
+function ohRankHtml(){
+  const ym = OH.ym || (OH.ym = TODAY.slice(0,7));
+  const monthBar = `<div class="quick">${ohMonths().map(m =>
+    `<button type="button" class="qb" data-ohym="${m}" aria-pressed="${ym === m}">${wkYmLabel(m)}</button>`).join('')}</div>`;
+  if(!OH.mon[ym]){
+    if(!OH.monBusy[ym] && !OH.monErr) setTimeout(() => ohFetchMon(ym), 0);   // 실패했으면 탭 · 월을 다시 눌러야 재시도
+    return `<div class="card"><header><h2>${esc(wkYmLabel(ym))} 개인별 실적 현황</h2></header>${monthBar}
+      <div class="empty"><div class="big">${OH.monErr ? '실적을 불러오지 못했습니다' : '불러오는 중…'}</div>${OH.monErr ? `<div class="s">${esc(OH.monErr)}</div>` : ''}</div></div>`;
+  }
+  const { g, tgt, nW, weekDays, rows: all } = ohBoard(ym);
+  const depts = [...new Set(all.map(r => r.dept).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'ko'));
+  if(OH.dept && !depts.includes(OH.dept)) OH.dept = '';
+  const rows = OH.dept ? all.filter(r => r.dept === OH.dept) : all;
+  const el = ohElapsed(ym), dim = wkDaysIn(ym), pace = tgt * el / dim;
+  const done = all.filter(r => r.done).length;
+  const avg = all.length ? all.reduce((a,r) => a + r.pct, 0) / all.length : 0;
+  const meK = (STORE.get('oh_dept') || '').trim() + '|' + (STORE.get('oh_name') || '').trim();
+  const me = all.find(r => r.k === meK);
+  const edit = OH.goalEdit && UNLOCKED.walkadmin;
+  const gEdYm = OH.goalYm || ym, gEd = ohGoal(gEdYm);
+  const edYms = [...new Set([ym, TODAY.slice(0,7), ohNextYm()])].sort();
+  return `<div class="card">
+    <header><h2>${esc(wkYmLabel(ym))} 개인별 실적 현황</h2>
+      <button type="button" class="btn sm ghost" data-ohgoal>목표 설정 🔒</button></header>
+    ${monthBar}
+    ${edit ? `<div class="wk-note" style="margin-top:16px">
+      <div class="h"><span class="t">월 목표 설정</span><span class="d">선택한 달부터 적용 · 다음 달도 따로 바꾸지 않으면 그대로 이어집니다</span></div>
+      <div class="grid" style="margin-top:12px">
+        <div><label>적용 월</label><select id="ohgYm">${edYms.map(m => `<option value="${m}" ${m === gEdYm ? 'selected' : ''}>${wkYmLabel(m)}</option>`).join('')}</select></div>
+        <div><label>운동 종류</label><select id="ohgEx">${['전체', ...OH_EX].map(x => `<option value="${esc(x)}" ${gEd.ex === x ? 'selected' : ''}>${x === '전체' ? '전체 (종류 무관)' : esc(x)}</option>`).join('')}</select></div>
+        <div><label>주 몇 회</label><input type="number" id="ohgWk" min="1" max="7" value="${gEd.perWeek}"></div>
+        <div><label>1회 최소 운동 시간 (분)</label><input type="number" id="ohgMin" min="1" max="600" value="${gEd.min}"></div>
+      </div>
+      <div class="acts"><button type="button" class="btn sm" data-ohgsave>저장</button>
+        <button type="button" class="btn sm ghost" data-ohgcancel>닫기</button></div>
+    </div>` : ''}
+    <div class="wk-kpis" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-top:16px">
+      <div class="wk-kpi"><div class="k">이달 목표</div><div class="v">${tgt}<small>회</small></div><div class="s">${esc(ohGoalText(g))}</div></div>
+      <div class="wk-kpi"><div class="k">참여자</div><div class="v">${all.length}<small>명</small></div><div class="s">이달 인증 1회 이상</div></div>
+      <div class="wk-kpi"><div class="k">달성자</div><div class="v">${done}<small>명</small></div><div class="s">${tgt}회 이상</div></div>
+      <div class="wk-kpi"><div class="k">평균 달성률</div><div class="v">${avg.toFixed(0)}<small>%</small></div><div class="s">${el} / ${dim}일 경과</div></div>
+    </div>
+    ${me ? `<p class="hint" style="margin:14px 0 0"><b>내 실적</b> : ${esc(me.name)} · 인정 ${me.cnt} / ${tgt}회 · 달성률 <b>${me.pct.toFixed(0)}%</b>${me.done ? ' · 🎉 달성' : ` · 남은 횟수 ${tgt - me.cnt}회`}</p>` : ''}
+  </div>
+  <div class="card">
+    <header><h2>개인별 달성률</h2>
+      <select class="bmv" data-ohdept><option value="">전체 부서</option>${depts.map(d => `<option ${OH.dept === d ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></header>
+    ${rows.length ? `<div class="wk-tblwrap"><table class="wk-tbl">
+      <thead><tr><th>순위</th><th>부서</th><th>이름</th><th class="r">인정 / 목표</th><th style="width:20%">달성률</th><th class="hide-m">주별 (월~일)</th><th class="r hide-m">${esc(g.ex === '전체' ? '운동' : g.ex)} 시간</th><th>상태</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const st = r.done ? '<span class="wk-badge">달성</span>'
+          : r.cnt >= pace ? '<span class="wk-badge ink">순항</span>' : '<span class="wk-badge off">분발</span>';
+        const wks = r.weeks.map((n, w) => {
+          const need = Math.min(g.perWeek, Math.round(g.perWeek * weekDays[w] / 7)) || 1;
+          return `<span class="${n >= need ? 'ok' : n ? 'some' : ''}" title="${w + 1}주차 ${n}회${weekDays[w] < 7 ? ` (이달 ${weekDays[w]}일)` : ''}">${n}</span>`;
+        }).join('');
+        return `<tr class="${r.k === meK ? 'me' : ''}">
+          <td class="rk">${r.rank}</td><td>${esc(r.dept || '-')}</td><td><b>${esc(r.name)}</b>${r.k === meK ? ' <small class="hint">(나)</small>' : ''}</td>
+          <td class="r"><b>${r.cnt}</b> / ${tgt}회</td>
+          <td><span class="wk-bar ${r.done ? 'done' : ''}"><i style="width:${r.pct.toFixed(1)}%"></i></span>
+              <small class="hint">${r.pct.toFixed(0)}%</small></td>
+          <td class="hide-m"><span class="oh-wks">${wks}</span></td>
+          <td class="r hide-m">${r.mins ? ohMinText(r.mins) : '-'}</td><td>${st}</td></tr>`;
+      }).join('')}</tbody></table></div>`
+      : `<div class="empty"><div class="big">${esc(wkYmLabel(ym))} 인증이 없습니다</div><div class="s">오운완 인증을 올리면 이곳에 개인별 달성률이 나옵니다.</div></div>`}
+    <p class="hint" style="margin:14px 0 0">${esc(g.ex === '전체' ? '운동' : g.ex)}을(를) <b>${ohMinText(g.min)} 이상</b> 하고 운동 시간을 적어 인증한 날만 1회로 인정합니다 (하루 최대 1회).
+      월 목표 ${tgt}회 = 주 ${g.perWeek}회 × ${dim}일 ÷ 7. ‘순항’은 오늘까지 날짜 기준 목표 페이스(${pace.toFixed(1)}회) 이상인 경우입니다.</p>
+  </div>`;
+}
+async function ohGoalSave(){
+  const ym = $('#ohgYm').value, ex = $('#ohgEx').value;
+  const perWeek = Math.round(+$('#ohgWk').value), min = Math.round(+$('#ohgMin').value);
+  if(!(perWeek >= 1 && perWeek <= 7)) return toast('주 횟수는 1~7회로 넣어 주세요', 'err');
+  if(!(min >= 1 && min <= 600)) return toast('운동 시간은 1~600분으로 넣어 주세요', 'err');
+  /* 다른 사람이 그사이 바꾼 목표를 덮어쓰지 않도록 최신 값을 다시 읽고 합칩니다 */
+  const cur = await db.from('walk_config').select('value').eq('key', 'oh_goal').maybeSingle();
+  if(cur.error) return toast('목표를 불러오지 못했습니다: ' + cur.error.message, 'err');
+  const goals = { ...ohParseGoals(cur.data && cur.data.value), [ym]: { perWeek, min, ex } };
+  const { error } = await db.from('walk_config').upsert({ key:'oh_goal', value:JSON.stringify(goals), updated_at:new Date().toISOString() });
+  if(error) return toast('저장 실패: ' + error.message, 'err');
+  OH.goals = goals; OH.goalEdit = false; OH.goalYm = '';
+  toast(`${wkYmLabel(ym)} 목표를 저장했습니다 (${ohGoalText({ perWeek, min, ex })})`, 'ok');
+  HB.key = ''; renderHealth();
+}
+
 function ohRender(){
   const box = $('#hbBody');
+  const tabs = `<div class="hb-tabs">${[['feed','인증 · 피드'], ['rank','개인별 실적 현황']].map(([k, t]) =>
+    `<button type="button" data-oht="${k}" aria-pressed="${(OH.tab || 'feed') === k}">${t}</button>`).join('')}</div>`;
+  if(OH.tab === 'rank'){
+    HB.key = 'oh:rank';
+    box.innerHTML = tabs + (OH.err ? '<div id="ohStats"></div><div id="ohFeed"></div>' : ohRankHtml());
+    if(OH.err) ohPaintFeed();
+    return;
+  }
   if(HB.key !== 'oh' || !$('#ohForm')){
     HB.key = 'oh';
     const nm = (WK.me && WK.me.name) || STORE.get('oh_name');
     const dp = (WK.me && WK.me.dept) || STORE.get('oh_dept');
-    box.innerHTML = `<div class="card" id="ohForm">
-      <header><h2>오늘 운동 완료 인증</h2><span class="note">OHUNWAN</span></header>
+    box.innerHTML = tabs + `<div class="card" id="ohForm">
+      <header><h2>오늘 운동 완료 인증</h2><span class="note">이달 목표 : ${esc(ohGoalText(ohGoal(TODAY.slice(0,7))))}</span></header>
       <div class="grid">
         <div><label>이름 <em>*</em></label><input type="text" id="ohName" value="${esc(nm)}"></div>
         <div><label>부서</label><input type="text" id="ohDept" value="${esc(dp)}"></div>
@@ -8951,6 +9292,8 @@ function ohPaintFeed(){
     <header><h2>${+ym.slice(5)}월 오운완</h2><span class="note">인증 ${mon.length}건 · ${Object.keys(cnt).length}명 참여</span></header>
     ${top.length ? `<div class="wk-win" style="margin:0">${top.map(([k,n],i) => `<span>${i === 0 ? '🏆 ' : ''}${esc(k)}<b>${n}회</b></span>`).join('')}</div>`
       : '<p class="hint" style="margin:0">이번 달 첫 오운완 인증의 주인공이 되어 보세요!</p>'}
+    <p class="hint" style="margin:12px 0 0">이달 목표 <b>${esc(ohGoalText(ohGoal(ym)))}</b> · 운동 시간을 꼭 적어 주세요.
+      <button type="button" class="btn sm ghost" data-oht="rank" style="margin-left:6px">개인별 실적 · 달성률 보기</button></p>
   </div>`;
   $('#ohFeed').innerHTML = OH.posts.length ? `<div class="hb-feed">${OH.posts.map(p => {
     const f = wkArr(p.files), d = new Date(p.created_at);
@@ -8980,6 +9323,21 @@ function ohThumbs(){
   el.innerHTML = OH.files.map((f,i) => `<div class="thumb"><img src="${f.preview}" alt=""><button type="button" class="x" data-ohrm="${i}">&times;</button></div>`).join('');
 }
 async function ohClick(e){
+  const ot = e.target.closest('[data-oht]');
+  if(ot){
+    OH.tab = ot.dataset.oht; OH.monErr = ''; HB.key = ''; renderHealth();
+    window.scrollTo({ top:$('#hbBody').getBoundingClientRect().top + scrollY - 90, behavior:'smooth' });
+    return;
+  }
+  const oy = e.target.closest('[data-ohym]');
+  if(oy){ OH.ym = oy.dataset.ohym; OH.goalYm = ''; OH.monErr = ''; HB.key = ''; renderHealth(); return; }
+  if(e.target.closest('[data-ohgoal]')){
+    if(!wkUnlock()) return;
+    OH.goalEdit = !OH.goalEdit; OH.goalYm = ''; HB.key = ''; renderHealth(); return;
+  }
+  if(e.target.closest('[data-ohgcancel]')){ OH.goalEdit = false; OH.goalYm = ''; HB.key = ''; renderHealth(); return; }
+  const gs = e.target.closest('[data-ohgsave]');
+  if(gs){ gs.disabled = true; await ohGoalSave(); gs.disabled = false; return; }
   const ex = e.target.closest('[data-ohex]');
   if(ex){ OH.ex = ex.dataset.ohex; $$('#hbBody [data-ohex]').forEach(b => b.setAttribute('aria-pressed', String(b === ex))); return; }
   if(e.target.closest('[data-ohdrop]')){ if(e.target.id !== 'ohFile') $('#ohFile').click(); return; }
@@ -10276,8 +10634,16 @@ const SV_ROSTER = [
   { add:{ site:'팩토리움', dept:'시설파트', position:'과장', name:'임재석', sort_order:2105 } },
   { hide:{ site:'팩토리움', dept:'설비운영파트', name:'조영욱' } },
   { move:{ site:'팩토리움', name:'정성배', from:'시설팀', to:'공무팀' } },
-  { rename:{ site:'팩토리움', dept:'물류운영팀', from:'오재영', name:'공석', position:'' } }
+  { rename:{ site:'팩토리움', dept:'물류운영팀', from:'오재영', name:'공석', position:'' } },
+  /* 개인정보 가림용 대표 계정 (2026-11-22) — 아래 SV_SHOW_ONLY 참고 */
+  { add:{ site:'서울사무소', dept:'안전보건경영부', position:'', name:'시몬스', sort_order:1005 } }
 ];
+/* 개인정보 : 관리감독자 선택 화면에는 이 한 명만 보여 줍니다 (2026-11-22 요청).
+   실제 관리감독자 명단 · 기록은 DB 에 그대로 있고 화면 목록에서만 가립니다.
+   다시 모두 보이게 하려면 SV_SHOW_ONLY = null 로 바꾸세요. */
+const SV_SHOW_ONLY = { site:'서울사무소', dept:'안전보건경영부', name:'시몬스' };
+const svVisible = s => !SV_SHOW_ONLY
+  || (s.site === SV_SHOW_ONLY.site && s.dept === SV_SHOW_ONLY.dept && s.name === SV_SHOW_ONLY.name);
 async function applySvRoster(){
   const { data, error } = await db.from('supervisors').select('id,site,dept,name,position,active');
   if(error) return;
@@ -10357,17 +10723,20 @@ async function loadSvActs(){
 
 /* ── 명단 ── */
 /* 고른 사업장의 관리감독자들 */
-function svPeople(){ return SUPERS.filter(s => s.site === SV_SITE); }
+function svPeople(){ return SUPERS.filter(s => s.site === SV_SITE && svVisible(s)); }
 
 function renderSvFilters(){
   const sBox = $('#svSiteTabs'), pick = $('#svPick');
   if(!sBox || !pick) return;
 
-  const sites = [...new Set(SUPERS.map(s => s.site).filter(Boolean))];
-  SV_SITES.forEach(s => { if(!sites.includes(s)) sites.push(s); });
+  const shown = SUPERS.filter(svVisible);
+  const sites = [...new Set(shown.map(s => s.site).filter(Boolean))];
+  /* 가림 모드에서는 보여 줄 사람이 있는 사업장만 탭으로 냅니다 */
+  if(!SV_SHOW_ONLY) SV_SITES.forEach(s => { if(!sites.includes(s)) sites.push(s); });
+  else if(!sites.length) sites.push(SV_SHOW_ONLY.site);
   if(!sites.includes(SV_SITE)) SV_SITE = sites[0] || SV_SITES[0];
   sBox.innerHTML = sites.map(s => `<button data-svsite="${esc(s)}" aria-pressed="${SV_SITE === s}"
-      >${esc(s)} ${SUPERS.filter(x => x.site === s).length}명</button>`).join('');
+      >${esc(s)} ${shown.filter(x => x.site === s).length}명</button>`).join('');
 
   pick.disabled = !svPeople().length;
   renderSvFound();
@@ -11973,27 +12342,45 @@ const CT_PEOPLE = [                               // 작성자 이름 ↔ 결과
 const ctMail = name => (CT_PEOPLE.find(p => p[0] === name) || [])[1] || '';
 const CT_GRADES = ['우수','보통','미흡'];
 const CT_GROUPS = [
-  { k:'g1', t:'1. 안전보건 관리체제', max:10 },
-  { k:'g2', t:'2. 실행수준',          max:50 },
+  { k:'g1', t:'1. 안전보건 관리체제', max:20 },
+  { k:'g2', t:'2. 실행수준',          max:40 },
   { k:'g3', t:'3. 운영관리',          max:20 },
   { k:'g4', t:'4. 재해발생 수준',     max:20 }
 ];
+/* 배점 : '수급인 선정 평가표 / 평가지표' 시트 기준 (1-1·1-2·2-3 추가, 2026-11-25)
+   k 는 저장된 점수와 연결되므로 바꾸지 않습니다 (새 항목 = r7 · r8 · r9) */
 const CT_ITEMS = [
-  { k:'r1', gk:'g1', no:'1-1', t:'역할 및 책임', q:'안전 업무 담당자 등 계획추진 조직 구성', pts:[10,5,1],
+  { k:'r7', gk:'g1', no:'1-1', t:'일반원칙', q:'안전보건 방침과 목표의 적정성', pts:[5,3,1],
+    need:['안전보건 방침 및 목표'],
+    rule:['지속적인 개선과 실행의 의지가 포함되는 등 안전보건 경영방침과 목표가 적정하게 수립됨',
+          '안전보건 경영방침과 목표가 수립되었으나, 구체적이지 않음',
+          '안전보건 경영방침과 목표가 수립되지 않았음'] },
+  { k:'r8', gk:'g1', no:'1-2', t:'계획수립', q:'안전보건 의무사항 이행 계획', pts:[10,5,1],
+    need:['안전보건 관리 계획서',
+          '년간 업무 캘린더(년간 업무 계획서) — 위험성평가, 근골격계 부담작업 조사, 협의체/합동점검(도급계약 限), 순회점검, 건강진단 등'],
+    rule:['안전보건협의체, 합동점검, 순회점검 및 예산, 건강진단 등 관계법령의 요구사항에 부합하는 활동계획이 적정하게 수립됨',
+          '안전보건 활동계획이 수립되었으나, 관계법령의 요구사항이 일부 누락되었음',
+          '안전보건 활동계획이 상당부분 결여되거나 법적 요구사항을 충족하지 못함'] },
+  { k:'r1', gk:'g1', no:'1-3', t:'역할 및 책임', q:'본사, 현장 등 계획추진 조직 구성', pts:[5,3,1],
     need:['보호구 지급, TBM 실시 등 안전보건 활동 계획별 담당자 등 업무분장'],
     rule:['안전보건 관리(총괄)책임자, 안전보건 총괄책임자, 안전/보건관리자 및 관리감독자 등 안전보건 조직의 구성, 역할, 책임이 규정됨',
           '안전보건 조직은 구성되었으나, 일부가 누락됨',
           '안전보건 조직이 구성되지 아니함'] },
-  { k:'r2', gk:'g2', no:'2-1', t:'위험성평가', q:'도급 대상 작업의 유해·위험요인 이해도 및 평가수준', pts:[40,20,1],
+  { k:'r2', gk:'g2', no:'2-1', t:'위험성평가', q:'도급 대상 작업의 유해·위험요인 이해도 및 평가수준', pts:[30,15,1],
     need:['공정표 (또는 작업계획서)', '공정 위험성평가 결과'],
     rule:['도급작업에 대한 위험성평가에 유해·위험요인이 반영되었음',
           '도급작업에 대한 위험성평가에 유해·위험요인이 일부 누락되었음',
           '도급작업에 대한 위험성평가가 미실시됨'] },
-  { k:'r3', gk:'g2', no:'2-2', t:'안전점검', q:'보호구 착용 확인 등 안전점검 및 모니터링 계획', pts:[10,5,1],
+  { k:'r3', gk:'g2', no:'2-2', t:'안전점검', q:'보호구 착용 확인 등 안전점검 및 모니터링 계획', pts:[5,3,1],
     need:['현장 안전점검 계획'],
     rule:['도급작업이 지닌 유해·위험요인별 작업 전·중·후 등 점검 및 모니터링 계획이 수립됨',
           '도급작업이 지닌 유해·위험요인별 작업 전·중·후 등 점검 및 모니터링 계획이 수립되었으나 일부 항목이 누락됨',
           '도급작업이 지닌 유해·위험요인별 작업 전·중·후 등 점검 및 모니터링 계획이 미수립됨'] },
+  { k:'r9', gk:'g2', no:'2-3', t:'교육 및 기록', q:'안전보건 교육/훈련 계획', pts:[5,3,1],
+    need:['안전보건 교육(정기/채용 시/특별 등) 계획서', '훈련 계획서(소방 등)'],
+    rule:['안전보건 교육/훈련 종류별로 교육내용, 시기, 대상자, 장소 등을 포함 계획이 수립됨',
+          '정기 안전보건교육 등 법정 요구사항에 대한 실행계획이 수립됨',
+          '정기 안전보건교육 등 법정 요구사항에 대한 실행계획이 수립되었으나 일부 항목이 누락됨'] },
   { k:'r4', gk:'g3', no:'3-1', t:'위험물질 및 설비', q:'취급 유해·위험물질, 기계·기구 등 안전운용 대책', pts:[10,5,1],
     need:['작업 공도구 리스트', '종사자 지급 예정 보호구 리스트', '보호구 안전인증서', '사용 화학물질 리스트 및 MSDS',
           '유해·위험물질, 기계·기구 사용 시 안전지침 또는 수칙 등', '지게차 등 차량계 하역 운반/건설 기계 리스트',
@@ -12063,7 +12450,10 @@ const CT_KW = {
   r3:['점검','모니터링','순회','체크리스트'],
   r4:['공도구','공구','보호구','인증','MSDS','화학','지침','수칙','지게차','장비','기계','차량'],
   r5:['비상','대응','연락망','매뉴얼','대피','소방'],
-  r6:['재해','재해율','산재','확인서']
+  r6:['재해','재해율','산재','확인서'],
+  r7:['방침','목표'],
+  r8:['관리 계획','관리계획','캘린더','업무계획','업무 계획','연간','년간'],
+  r9:['교육','훈련']
 };
 const ctMatch = (k, name) => (CT_KW[k] || []).some(w => String(name).toLowerCase().includes(w.toLowerCase()));
 const CT_ETC_OPT = '__etc';
@@ -12137,7 +12527,7 @@ async function ctSubmit(){
   if(!company) return fail('업체명을 입력해 주세요', '#ctCompany');
   if(!project) return fail('공사명을 입력해 주세요', '#ctProject');
   const all = CT_FILES.map(f => ({ k:'all', f }));
-  if(!all.length) return fail('증빙서류를 하나 이상 첨부해 주세요', '#ctDrop');
+  /* 증빙서류는 선택 — 첨부 없이도 제출됩니다 */
 
   const btn = $('#btnCtSubmit'), hint = $('#ctHint');
   btn.disabled = true;
@@ -12282,7 +12672,7 @@ function ctDocHtml(r){
     <div style="text-align:center;font-size:24px;font-weight:700;text-decoration:underline;text-underline-offset:6px;margin:6px 0 26px">공사계약 적격 수급인 선정 평가표</div>
     <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:14px">
       <tr><td style="padding:4px 0">□ 공사명 : <b>${esc(r.project)}</b></td><td style="padding:4px 0;text-align:right">□ 업체명 : <b>${esc(r.company)}</b></td></tr>
-      <tr><td style="padding:2px 0;font-size:12px;color:#555">접수번호 ${esc(r.eval_no || '')}${r.period ? ' · 공사 기간 ' + esc(r.period) : ''}${r.evaluated_at ? ' · 평가 일자 ' + esc(String(r.evaluated_at).slice(0, 10)) : ''}</td>
+      <tr><td style="padding:2px 0;font-size:12px;color:#555">접수번호 ${esc(r.eval_no || '')}${r.period ? ' · 공사 기간 ' + esc(r.period) : ''}</td>
           <td style="padding:2px 0;font-size:12px;color:#555;text-align:right">작성자 ${esc(r.writer || '')}${r.evaluator ? ' · 평가자 ' + esc(r.evaluator) : ''}</td></tr>
     </table>
     <table style="width:100%;border-collapse:collapse;margin-bottom:8px">
@@ -12307,7 +12697,7 @@ function ctDocHtml(r){
     <div style="font-size:11px;color:#666;margin:0 0 20px">등급 기준 : S 90점 이상 · A 80점 이상 · B 70점 이상 · C 60점 이상 · D 60점 미만 (C~D 등급 : 도급계약 미체결 또는 미연장)</div>
     ${r.opinion ? `<div style="font-size:14px;font-weight:700;margin:0 0 8px">□ 종합 의견</div>
       <div style="border:1px solid #000;padding:10px 12px;font-size:13px;white-space:pre-wrap;margin-bottom:20px">${esc(r.opinion)}</div>` : ''}
-    <div style="font-size:12px;color:#555;text-align:right">${r.evaluated_at ? '평가 확정 ' + esc(String(r.evaluated_at).slice(0, 10)) + ' · ' : ''}시몬스 안전보건 통합 플랫폼</div>
+    <div style="font-size:12px;color:#555;text-align:right">시몬스 안전보건 통합 플랫폼</div>
   </div>`;
 }
 function ctPrint(r){
@@ -12425,7 +12815,7 @@ function ctOpen(id){
   const sendMail = async () => {
     const to = ctMail(r.writer) || r.writer_email;
     if(!to) return toast(`${r.writer} 님의 메일 주소가 명단(CT_PEOPLE)에 없습니다`, 'err');
-    if(!confirm(`${r.writer} (${to}) 님께 평가결과표를 메일로 보낼까요?`)) return;
+    if(!confirm(`${r.writer} (${to}) 님께 평가결과표를 메일로 보낼까요?\n(${CT_ADMIN_MAIL} 에도 함께 갑니다)`)) return;
     const c = ctCalc(r.scores);
     const btn = box.querySelector('[data-a="mail"]');
     btn.disabled = true; btn.textContent = '보내는 중…';
@@ -12438,7 +12828,7 @@ function ctOpen(id){
       '본 메일의 내용이나 기타 문의 사항에 대해서는 아래 담당자에게 연락해 주시면 신속하게 답변해 드리겠습니다.'];
     const CT_MAIL_CONTACT = ['■ 문의처: 한기선 차장 (안전보건기획팀)', '■ 연락처: 010-4501-7149 / hk7149@simmons.co.kr'];
     const text = [...CT_MAIL_HEAD.flatMap(s => [s, '']),
-      `업체명 : ${r.company}`, `공사명 : ${r.project}`, r.period ? `공사 기간 : ${r.period}` : '', `평가 일자 : ${String(r.evaluated_at || r.eval_date || '').slice(0, 10)}`,
+      `업체명 : ${r.company}`, `공사명 : ${r.project}`, r.period ? `공사 기간 : ${r.period}` : '',
       ...CT_GROUPS.map(g => `${g.t} : ${c.sub[g.k]} / ${g.max}`),
       `합계 : ${c.total}점 / 판정 : ${passTxt}`, '',
       ...CT_MAIL_TAIL.flatMap(s => [s, '']), ...CT_MAIL_CONTACT, '', '감사합니다.'].join('\n');
@@ -12449,7 +12839,9 @@ function ctOpen(id){
       ${CT_MAIL_TAIL.map(s => `<p style="${p}">${esc(s)}</p>`).join('')}
       <p style="${p}">${CT_MAIL_CONTACT.map(esc).join('<br>')}</p>
       <p style="${p}">감사합니다.</p></div>`;
-    const ok = await notifyMail(subject, text, to, html);
+    /* 결과표 메일은 CT_ADMIN_MAIL(hk7149) 에도 항상 함께 보냅니다 */
+    const toList = [...new Set([to, CT_ADMIN_MAIL].map(x => String(x).trim().toLowerCase()).filter(Boolean))];
+    const ok = await notifyMail(subject, text, toList, html);
     if(ok === null){ paint(); return toast('메일 발송 주소(웹훅)가 설정되지 않았습니다. 설정에서 확인해 주세요', 'err'); }
     if(!ok){ paint(); return toast('메일 발송 실패 · ' + MAIL_LOG, 'err'); }
     const patch = { status:'발송완료', mailed_at: new Date().toISOString(), mailed_to: to };
@@ -13193,7 +13585,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if(CONFIG.url && CONFIG.key) connect(CONFIG.url, CONFIG.key);
   else { $('#setup').hidden = false; document.documentElement.classList.remove('pf-locked'); }  /* 연결 정보 입력이 먼저 */
 
-  /* 회원가입 승인 메일의 링크 (?admin=users&emp=사번) → 회원 관리(관리자) 화면 */
+  /* 회원가입 알림 메일의 링크 (?admin=users&emp=아이디) → 회원 관리(관리자) 화면 */
   const admParam = new URLSearchParams(location.search).get('admin');
   if(admParam === 'users') pfAdminOpen(new URLSearchParams(location.search).get('emp') || '');
 
